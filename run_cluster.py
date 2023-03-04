@@ -60,7 +60,16 @@ from subprocess import run
 print('cwd: ', cwd)
 print('path_python: ', path_python)
 
+
+with open(f'{dir_script}/servers.txt', 'r') as f:
+    servers = f.readlines()
+    servers = [line.strip() for line in servers]
+    print(servers)
+
+idx_server = 0
 while True:
+    server = servers[idx_server]
+    idx_server += 1
     with open(f'{args.dir_run}/metadata.json', 'r') as f:
         metadata = json.load(f)
     if metadata['idx_command'] >= len(metadata['commands']):
@@ -68,7 +77,7 @@ while True:
         break
 
     command = f'cd {cwd} && {path_python} run_node.py {args.dir_run} --dir {args.dir} --mem_gpu {args.mem_gpu} --mem_cpu {args.mem_cpu}'
-    command = f'ssh visiongpu47.csail.mit.edu \"{command}\"'
+    command = f'ssh {server} \"{command}\"'
     print(command)
     run(command, shell=True)
     time.sleep(.1)

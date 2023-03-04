@@ -1,4 +1,5 @@
+visiongpu46.csail.mit.edu
 visiongpu47.csail.mit.edu
-visiongpu47.csail.mit.edu
-visiongpu47.csail.mit.edu
-visiongpu47.csail.mit.edu
+visiongpu48.csail.mit.edu
+visiongpu49.csail.mit.edu
+visiongpu50.csail.mit.edu
