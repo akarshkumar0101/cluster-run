@@ -1,18 +1,24 @@
 
+# Akarsh
 import argparse
 import json
 import os
+import re
+import subprocess
 import sys
 import time
 from datetime import datetime
-from subprocess import run
+
+import numpy as np
+
+# from subprocess import run
 
 parser = argparse.ArgumentParser()
 parser.add_argument('filename', type=str, help='filename to run')
 parser.add_argument('--dir', type=str, default=None, help='location to run commands')
 
 parser.add_argument('--mem_gpu', type=int, default=5000, help='gpu memory needed for each job (in MB)')
-parser.add_argument('--mem_cpu', type=int, default=5000, help='cpu memory needed for each job (in MB)')
+# parser.add_argument('--mem_cpu', type=int, default=5000, help='cpu memory needed for each job (in MB)')
 
 args = parser.parse_args()
 
@@ -66,11 +72,6 @@ for server in servers[:3]:
 print('...')
 print()
 
-import re
-import subprocess
-
-import numpy as np
-
 
 def get_gpu_stats_server(server):
     # keys = ['total', 'reserved', 'used', 'free']
@@ -89,7 +90,6 @@ def get_gpu_stats_server(server):
 # for server in servers:
 #     print(server)
 #     print(get_mem_server(server)['free'])
-
 
 servergpu2popens = dict()
 
