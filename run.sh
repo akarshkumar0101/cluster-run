@@ -1,11 +1,10 @@
 
 
-
-which python && pwd && echo 1
-which python && pwd && echo 2
-which python && pwd && echo 3
-which python && pwd && echo 4
-which python && pwd && echo 5
+hostname && pwd && which python && echo 1
+hostname && pwd && which python && echo 2
+hostname && pwd && which python && echo 3
+hostname && pwd && which python && echo 4
+hostname && pwd && which python && echo 5
 
 
 

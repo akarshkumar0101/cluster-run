@@ -37,6 +37,8 @@ with open(f'{args.dir_run}/metadata.json', 'w') as f:
 print(f'Launching on {hostname}: {command} at location {args.dir}')
 
 command = f'cd {args.dir} && alias python={path_python} && {command}'
+print(f'Launching exactly: {command}')
+print()
 
 idx_command = metadata['idx_command']
 f_stdout = f'{args.dir_run}/{idx_command}/stdout.txt'
