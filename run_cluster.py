@@ -68,7 +68,7 @@ with open(f'{dir_script}/servers.txt', 'r') as f:
 
 idx_server = 0
 while True:
-    server = servers[idx_server]
+    server = servers[idx_server%len(servers)]
     idx_server += 1
     with open(f'{args.dir_run}/metadata.json', 'r') as f:
         metadata = json.load(f)
