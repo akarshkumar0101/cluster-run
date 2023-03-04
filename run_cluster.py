@@ -102,7 +102,6 @@ def launch_command(idx_command, idx_server, idx_gpu):
     server_sh.append(f'export CUDA_VISIBLE_DEVICES={idx_gpu}')
     server_sh.append(command)
     server_sh = '\n'.join(server_sh)
-    print(server_sh)
 
     f_run = f'{args.dir_run}/{idx_command}/run.sh'
     f_stdout = f'{args.dir_run}/{idx_command}/stdout.txt'
@@ -112,18 +111,18 @@ def launch_command(idx_command, idx_server, idx_gpu):
         f.write(server_sh)
 
     ssh_command = f'ssh {servers[idx_server]} \"zsh {args.dir_run}/{idx_command}/run.sh\"'
+    print(f'{f_run}: ')
+    print(server_sh)
+    print()
+    print(f'Launching command {idx_command} on {servers[idx_server]} GPU {idx_gpu} with:')
     print(ssh_command)
-
 
     # command = f'cd {args.dir} && alias python={path_python} && {command}'
     # command = f'export CUDA_VISIBLE_DEVICES={idx_gpu} && {command}'
     # if idx_server is not None:
         # command = f'ssh {servers[idx_server]} \"{command}\"'
 
-    # print(f'Launching command {idx_command} on {servers[idx_server]}, GPU {idx_gpu} with:')
     # print(command)
-    print()
-
     with open(f_stdout, 'wb') as out, open(f_stderr, 'wb') as err:
         popen = subprocess.Popen(ssh_command, shell=True, stdout=out, stderr=err, executable='zsh')
         servergpu2popens[(idx_server, idx_gpu)].append(popen)
@@ -135,13 +134,13 @@ while idx_command < len(commands):
     if (idx_server, idx_gpu) not in servergpu2popens:
         servergpu2popens[(idx_server, idx_gpu)] = []
     
+    print()
+    print('---------------------')
+    print(f'Polling server {servers[idx_server]} GPU {idx_gpu}...')
     gpu_stats = get_gpu_stats_server(servers[idx_server])
     n_gpus = len(gpu_stats['total'])
-
     n_commands_this_gpu = gpu_stats['free'][idx_gpu]//args.mem_gpu
-    print(gpu_stats['free'][idx_gpu], args.mem_gpu)
-    print(n_commands_this_gpu)
-    print()
+    print(f"{gpu_stats['free'][idx_gpu]} MB free, {args.mem_gpu} MB needed/command -> {n_commands_this_gpu} commands")
 
     done_running = np.all([popen.poll() is not None for popen in servergpu2popens[(idx_server, idx_gpu)]])
     if done_running:
