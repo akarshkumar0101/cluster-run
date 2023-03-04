@@ -61,6 +61,7 @@ while True:
         break
 
     command = f'python run_node.py {args.dir_run} --dir {args.dir} --mem_gpu {args.mem_gpu} --mem_cpu {args.mem_cpu}'
+    command = f'which python && pwd && {command}'
     command = f'ssh visiongpu47.csail.mit.edu \"{command}\"'
     print(command)
     run(command, shell=True)
