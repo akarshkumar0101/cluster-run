@@ -150,6 +150,8 @@ while idx_command < len(commands):
             idx_command += 1
             if idx_command >= len(commands):
                 break
+    else:
+        print('Skipping this GPU because it is still running previous commands...')
 
     idx_gpu += 1
     if idx_gpu>=n_gpus:
