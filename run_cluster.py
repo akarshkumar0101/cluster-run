@@ -111,6 +111,7 @@ def launch_command(idx_command, idx_server, idx_gpu):
         f.write(server_sh)
 
     ssh_command = f'ssh {servers[idx_server]} \"zsh {args.dir_run}/{idx_command}/run.sh\"'
+    print()
     print(f'{f_run}: ')
     print(server_sh)
     print()
