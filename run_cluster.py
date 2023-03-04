@@ -2,6 +2,7 @@
 import argparse
 import json
 import os
+import sys
 from datetime import datetime
 
 parser = argparse.ArgumentParser()
@@ -53,6 +54,11 @@ print()
 import time
 from subprocess import run
 
+cwd = os.getcwd()
+path_python = sys.executable
+print('cwd: ', cwd)
+print('path_python: ', path_python)
+
 while True:
     with open(f'{args.dir_run}/metadata.json', 'r') as f:
         metadata = json.load(f)
@@ -60,8 +66,7 @@ while True:
         # no more commands to run
         break
 
-    command = f'python run_node.py {args.dir_run} --dir {args.dir} --mem_gpu {args.mem_gpu} --mem_cpu {args.mem_cpu}'
-    command = f'which python && pwd && {command}'
+    command = f'cd {cwd} && {path_python} run_node.py {args.dir_run} --dir {args.dir} --mem_gpu {args.mem_gpu} --mem_cpu {args.mem_cpu}'
     command = f'ssh visiongpu47.csail.mit.edu \"{command}\"'
     print(command)
     run(command, shell=True)
