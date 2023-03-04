@@ -96,20 +96,36 @@ servergpu2popens = dict()
 def launch_command(idx_command, idx_server, idx_gpu):
     command = commands[idx_command]
 
-    command = f'cd {args.dir} && alias python={path_python} && {command}'
-    command = f'export CUDA_VISIBLE_DEVICES={idx_gpu} && {command}'
-    if idx_server is not None:
-        command = f'ssh {servers[idx_server]} \"{command}\"'
+    server_sh = []
+    server_sh.append(f'cd {args.dir}')
+    server_sh.append(f'alias python={path_python}')
+    server_sh.append(f'export CUDA_VISIBLE_DEVICES={idx_gpu}')
+    server_sh.append(command)
+    server_sh = '\n'.join(server_sh)
+    print(server_sh)
 
-    print(f'Launching command {idx_command} on {servers[idx_server]}, GPU {idx_gpu} with:')
-    print(command)
-    print()
-
+    f_run = f'{args.dir_run}/{idx_command}/run.sh'
     f_stdout = f'{args.dir_run}/{idx_command}/stdout.txt'
     f_stderr = f'{args.dir_run}/{idx_command}/stderr.txt'
     os.makedirs(os.path.dirname(f_stdout), exist_ok=True)
+    with open(f_run, 'w') as f:
+        f.write(server_sh)
+
+    ssh_command = f'ssh {servers[idx_server]} \"zsh {args.dir_run}/{idx_command}/run.sh\"'
+    print(ssh_command)
+
+
+    # command = f'cd {args.dir} && alias python={path_python} && {command}'
+    # command = f'export CUDA_VISIBLE_DEVICES={idx_gpu} && {command}'
+    # if idx_server is not None:
+        # command = f'ssh {servers[idx_server]} \"{command}\"'
+
+    # print(f'Launching command {idx_command} on {servers[idx_server]}, GPU {idx_gpu} with:')
+    # print(command)
+    print()
+
     with open(f_stdout, 'wb') as out, open(f_stderr, 'wb') as err:
-        popen = subprocess.Popen(command, shell=True, stdout=out, stderr=err, executable='zsh')
+        popen = subprocess.Popen(ssh_command, shell=True, stdout=out, stderr=err, executable='zsh')
         servergpu2popens[(idx_server, idx_gpu)].append(popen)
 
 idx_command = 0
