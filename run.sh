@@ -1,8 +1,6 @@
 
-sleep 04 && which python
-sleep 04 && which python
-sleep 04 && which python
-sleep 04 && which python
+sleep 04 && which python && python --version
+sleep 04 && which python && python --version
 
 # sleep 04 && python train.py --level 0
 # sleep 04 && python train.py --level 1
