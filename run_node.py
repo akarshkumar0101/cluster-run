@@ -8,6 +8,10 @@ import subprocess
 parser = argparse.ArgumentParser()
 parser.add_argument('dir_run', type=str, help='run directory')
 parser.add_argument('--dir', type=str, default=None, help='location to run commands')
+
+parser.add_argument('--mem_gpu', type=int, default=5000, help='gpu memory needed for each job (in MB)')
+parser.add_argument('--mem_cpu', type=int, default=5000, help='cpu memory needed for each job (in MB)')
+
 args = parser.parse_args()
 
 hostname = socket.gethostname()
@@ -26,7 +30,8 @@ metadata['command2hostname'][command] = hostname
 with open(f'{args.dir_run}/metadata.json', 'w') as f:
     json.dump(metadata, f)
 
-print(f'Running on {hostname}: {command}')
+print(f'Launching on {hostname}: {command} at location {args.dir}')
+command = f'cd {args.dir} && {command}'
 
 idx_command = metadata['idx_command']
 f_stdout = f'{args.dir_run}/{idx_command}/stdout.txt'

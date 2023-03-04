@@ -7,6 +7,10 @@ from datetime import datetime
 parser = argparse.ArgumentParser()
 parser.add_argument('filename', type=str, help='filename to run')
 parser.add_argument('--dir', type=str, default=None, help='location to run commands')
+
+parser.add_argument('--mem_gpu', type=int, default=5000, help='gpu memory needed for each job (in MB)')
+parser.add_argument('--mem_cpu', type=int, default=5000, help='cpu memory needed for each job (in MB)')
+
 args = parser.parse_args()
 
 if args.dir is None:
@@ -49,27 +53,13 @@ print()
 import time
 from subprocess import run
 
-run(['python', 'run_node.py', args.dir_run, '--dir', args.dir])
-time.sleep(.1)
-run(['python', 'run_node.py', args.dir_run, '--dir', args.dir])
-time.sleep(.1)
-run(['python', 'run_node.py', args.dir_run, '--dir', args.dir])
-time.sleep(.1)
-run(['python', 'run_node.py', args.dir_run, '--dir', args.dir])
-time.sleep(.1)
-run(['python', 'run_node.py', args.dir_run, '--dir', args.dir])
-time.sleep(.1)
-run(['python', 'run_node.py', args.dir_run, '--dir', args.dir])
-time.sleep(.1)
-run(['python', 'run_node.py', args.dir_run, '--dir', args.dir])
-time.sleep(.1)
-run(['python', 'run_node.py', args.dir_run, '--dir', args.dir])
-time.sleep(.1)
-run(['python', 'run_node.py', args.dir_run, '--dir', args.dir])
-time.sleep(.1)
-run(['python', 'run_node.py', args.dir_run, '--dir', args.dir])
-time.sleep(.1)
-run(['python', 'run_node.py', args.dir_run, '--dir', args.dir])
-time.sleep(.1)
-run(['python', 'run_node.py', args.dir_run, '--dir', args.dir])
-time.sleep(.1)
+while True:
+    with open(f'{args.dir_run}/metadata.json', 'r') as f:
+        metadata = json.load(f)
+    if metadata['idx_command'] >= len(metadata['commands']):
+        # no more commands to run
+        break
+
+    command = f'python run_node.py {args.dir_run} --dir {args.dir} --mem_gpu {args.mem_gpu} --mem_cpu {args.mem_cpu}'
+    run(command.split())
+    time.sleep(.1)
