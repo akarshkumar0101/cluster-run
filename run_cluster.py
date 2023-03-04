@@ -16,10 +16,8 @@ import numpy as np
 parser = argparse.ArgumentParser()
 parser.add_argument('filename', type=str, help='filename to run')
 parser.add_argument('--dir', type=str, default=None, help='location to run commands')
-
 parser.add_argument('--mem_gpu', type=int, default=5000, help='gpu memory needed for each job (in MB)')
 # parser.add_argument('--mem_cpu', type=int, default=5000, help='cpu memory needed for each job (in MB)')
-
 args = parser.parse_args()
 
 if args.dir is None:
@@ -158,6 +156,8 @@ while idx_command < len(commands):
         idx_gpu = 0
         idx_server = (idx_server+1)%len(servers)
 
+print('Done launching all commands!')
+print('Waiting for all jobs to finish...')
 for popens in servergpu2popens.values():
     for popen in popens:
         popen.wait()
