@@ -4,6 +4,7 @@ import json
 import os
 import socket
 import subprocess
+import sys
 
 parser = argparse.ArgumentParser()
 parser.add_argument('dir_run', type=str, help='run directory')
@@ -13,6 +14,9 @@ parser.add_argument('--mem_gpu', type=int, default=5000, help='gpu memory needed
 parser.add_argument('--mem_cpu', type=int, default=5000, help='cpu memory needed for each job (in MB)')
 
 args = parser.parse_args()
+
+cwd = os.getcwd()
+path_python = sys.executable
 
 hostname = socket.gethostname()
 
@@ -31,7 +35,8 @@ with open(f'{args.dir_run}/metadata.json', 'w') as f:
     json.dump(metadata, f)
 
 print(f'Launching on {hostname}: {command} at location {args.dir}')
-command = f'cd {args.dir} && {command}'
+
+command = f'cd {args.dir} && alias python={path_python} && {command}'
 
 idx_command = metadata['idx_command']
 f_stdout = f'{args.dir_run}/{idx_command}/stdout.txt'

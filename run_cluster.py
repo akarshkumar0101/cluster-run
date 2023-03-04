@@ -14,6 +14,9 @@ parser.add_argument('--mem_cpu', type=int, default=5000, help='cpu memory needed
 
 args = parser.parse_args()
 
+cwd = os.getcwd()
+path_python = sys.executable
+
 if args.dir is None:
     args.dir = os.getcwd()
 
@@ -54,8 +57,6 @@ print()
 import time
 from subprocess import run
 
-cwd = os.getcwd()
-path_python = sys.executable
 print('cwd: ', cwd)
 print('path_python: ', path_python)
 
