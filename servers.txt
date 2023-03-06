@@ -9,3 +9,5 @@ visiongpu51.csail.mit.edu
 visiongpu52.csail.mit.edu
 visiongpu53.csail.mit.edu
 visiongpu54.csail.mit.edu
+visiongpuws01.csail.mit.edu
+visiongpuws02.csail.mit.edu

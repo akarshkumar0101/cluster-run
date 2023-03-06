@@ -84,8 +84,6 @@ def main(args):
     print('...')
     print()
 
-
-
     # for server in servers:
     #     print(server)
     #     print(get_mem_server(server)['free'])
@@ -130,38 +128,47 @@ def main(args):
     idx_command = 0
     idx_server = 0
     idx_gpu = 0
-    while idx_command < len(commands):
-        if (idx_server, idx_gpu) not in servergpu2popens:
-            servergpu2popens[(idx_server, idx_gpu)] = []
-        
-        print()
-        print('---------------------')
-        print(f'Polling server {servers[idx_server]} GPU {idx_gpu}...')
-        gpu_stats = get_gpu_stats_server(servers[idx_server])
-        n_gpus = len(gpu_stats['total'])
-        n_commands_this_gpu = gpu_stats['free'][idx_gpu]//args.mem_gpu
-        print(f"{gpu_stats['free'][idx_gpu]} MB free, {args.mem_gpu} MB needed/command -> {n_commands_this_gpu} commands")
+    
+    try:
+        while idx_command < len(commands):
+            if (idx_server, idx_gpu) not in servergpu2popens:
+                servergpu2popens[(idx_server, idx_gpu)] = []
+            
+            print()
+            print('---------------------')
+            print(f'Polling server {servers[idx_server]} GPU {idx_gpu}...')
+            gpu_stats = get_gpu_stats_server(servers[idx_server])
+            n_gpus = len(gpu_stats['total'])
+            n_commands_this_gpu = gpu_stats['free'][idx_gpu]//args.mem_gpu
+            print(f"{gpu_stats['free'][idx_gpu]} MB free, {args.mem_gpu} MB needed/command -> {n_commands_this_gpu} commands")
 
-        done_running = np.all([popen.poll() is not None for popen in servergpu2popens[(idx_server, idx_gpu)]])
-        if done_running:
-            for _ in range(n_commands_this_gpu):
-                launch_command(idx_command=idx_command, idx_server=idx_server, idx_gpu=idx_gpu)
-                idx_command += 1
-                if idx_command >= len(commands):
-                    break
-        else:
-            print('Skipping this GPU because it is still running previous commands...')
+            done_running = np.all([popen.poll() is not None for popen in servergpu2popens[(idx_server, idx_gpu)]])
+            if done_running:
+                for _ in range(n_commands_this_gpu):
+                    launch_command(idx_command=idx_command, idx_server=idx_server, idx_gpu=idx_gpu)
+                    idx_command += 1
+                    if idx_command >= len(commands):
+                        break
+            else:
+                print('Skipping this GPU because it is still running previous commands...')
 
-        idx_gpu += 1
-        if idx_gpu>=n_gpus:
-            idx_gpu = 0
-            idx_server = (idx_server+1)%len(servers)
+            idx_gpu += 1
+            if idx_gpu>=n_gpus:
+                idx_gpu = 0
+                idx_server = (idx_server+1)%len(servers)
 
-    print('Done launching all commands!')
-    print('Waiting for all jobs to finish...')
-    for popens in servergpu2popens.values():
-        for popen in popens:
-            popen.wait()
+        print('Done launching all commands!')
+        print('Waiting for all jobs to finish...')
+        for popens in servergpu2popens.values():
+            for popen in popens:
+                popen.wait()
+    except KeyboardInterrupt:
+        inp = input('Would you like to terminate or kill all processes? (t/k)')
+        for popen in servergpu2popens.values():
+            if inp == 't':
+                popen.terminate()
+            elif inp == 'k':
+                popen.kill()
 
 if __name__=='__main__':
     args = parser.parse_args()
