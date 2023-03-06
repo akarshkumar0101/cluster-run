@@ -164,11 +164,12 @@ def main(args):
                 popen.wait()
     except KeyboardInterrupt:
         inp = input('Would you like to terminate or kill all processes? (t/k)')
-        for popen in servergpu2popens.values():
-            if inp == 't':
-                popen.terminate()
-            elif inp == 'k':
-                popen.kill()
+        for popens in servergpu2popens.values():
+            for popen in popens:
+                if inp == 't':
+                    popen.terminate()
+                elif inp == 'k':
+                    popen.kill()
 
 if __name__=='__main__':
     args = parser.parse_args()
