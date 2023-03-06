@@ -18,58 +18,6 @@ parser.add_argument('filename', type=str, help='filename to run')
 parser.add_argument('--dir', type=str, default=None, help='location to run commands')
 parser.add_argument('--mem_gpu', type=int, default=5000, help='gpu memory needed for each job (in MB)')
 # parser.add_argument('--mem_cpu', type=int, default=5000, help='cpu memory needed for each job (in MB)')
-args = parser.parse_args()
-
-if args.dir is None:
-    args.dir = os.getcwd()
-
-cwd = os.getcwd()
-path_python = sys.executable
-print(f'{cwd=}')
-print(f'{path_python=}')
-print(f'{args.dir=}')
-print()
-
-with open(args.filename, 'r') as f:
-    commands = f.readlines()
-    commands = [line.strip() for line in commands]
-    commands = [line for line in commands if len(line) > 0]
-    commands = [line for line in commands if line[0] != '#']
-
-print(f'Found {len(commands)} commands in {args.filename}, First 3: ')
-for command in commands[:3]:
-    print(command)
-print('...')
-print()
-
-now = datetime.now()
-# dir_run = now.strftime('%Y-%m-%d_%H-%M-%S')
-dir_run = now.strftime('%Y-%m-%d_%H')
-dir_script = os.path.dirname(os.path.realpath(__file__))
-dir_run = f'{dir_script}/runs/{dir_run}'
-args.dir_run = dir_run
-
-print(f'Creating run directory: {args.dir_run}')
-os.makedirs(args.dir_run, exist_ok=True)
-
-with open(f'{args.dir_run}/commands.txt', 'w') as f:
-    f.write('\n'.join(commands))
-
-metadata = dict(commands=commands, idx_command=0, command2hostname=dict())
-with open(f'{args.dir_run}/metadata.json', 'w') as f:
-    json.dump(metadata, f)
-
-
-with open(f'{dir_script}/servers.txt', 'r') as f:
-    servers = f.readlines()
-    servers = [line.strip() for line in servers]
-
-print(f'Found {len(servers)} servers, First 3: ')
-for server in servers[:3]:
-    print(server)
-print('...')
-print()
-
 
 def get_gpu_stats_server(server):
     # keys = ['total', 'reserved', 'used', 'free']
@@ -85,79 +33,136 @@ def get_gpu_stats_server(server):
             for key, o in zip(keys, out.split('-------'))}
     return data
 
-# for server in servers:
-#     print(server)
-#     print(get_mem_server(server)['free'])
+def main(args):
+    if args.dir is None:
+        args.dir = os.getcwd()
 
-servergpu2popens = dict()
-
-def launch_command(idx_command, idx_server, idx_gpu):
-    command = commands[idx_command]
-
-    server_sh = []
-    server_sh.append(f'cd {args.dir}')
-    server_sh.append(f'alias python={path_python}')
-    server_sh.append(f'export CUDA_VISIBLE_DEVICES={idx_gpu}')
-    server_sh.append(command)
-    server_sh = '\n'.join(server_sh)
-
-    f_run = f'{args.dir_run}/{idx_command}/run.sh'
-    f_stdout = f'{args.dir_run}/{idx_command}/stdout.txt'
-    f_stderr = f'{args.dir_run}/{idx_command}/stderr.txt'
-    os.makedirs(os.path.dirname(f_stdout), exist_ok=True)
-    with open(f_run, 'w') as f:
-        f.write(server_sh)
-
-    ssh_command = f'ssh {servers[idx_server]} \"zsh {args.dir_run}/{idx_command}/run.sh\"'
+    cwd = os.getcwd()
+    path_python = sys.executable
+    print(f'{cwd=}')
+    print(f'{path_python=}')
+    print(f'{args.dir=}')
     print()
-    print(f'{f_run}: ')
-    print(server_sh)
+
+    with open(args.filename, 'r') as f:
+        commands = f.readlines()
+        commands = [line.strip() for line in commands]
+        commands = [line for line in commands if len(line) > 0]
+        commands = [line for line in commands if line[0] != '#']
+
+    print(f'Found {len(commands)} commands in {args.filename}, First 3: ')
+    for command in commands[:3]:
+        print(command)
+    print('...')
     print()
-    print(f'Launching command {idx_command} on {servers[idx_server]} GPU {idx_gpu} with:')
-    print(ssh_command)
 
-    # command = f'cd {args.dir} && alias python={path_python} && {command}'
-    # command = f'export CUDA_VISIBLE_DEVICES={idx_gpu} && {command}'
-    # if idx_server is not None:
-        # command = f'ssh {servers[idx_server]} \"{command}\"'
+    now = datetime.now()
+    dir_run = now.strftime('%Y-%m-%d_%H-%M-%S')
+    # dir_run = now.strftime('%Y-%m-%d_%H')
+    dir_script = os.path.dirname(os.path.realpath(__file__))
+    dir_run = f'{dir_script}/runs/{dir_run}'
+    args.dir_run = dir_run
 
-    # print(command)
-    with open(f_stdout, 'wb') as out, open(f_stderr, 'wb') as err:
-        popen = subprocess.Popen(ssh_command, shell=True, stdout=out, stderr=err, executable='zsh')
-        servergpu2popens[(idx_server, idx_gpu)].append(popen)
+    print(f'Creating run directory: {args.dir_run}')
+    os.makedirs(args.dir_run, exist_ok=True)
 
-idx_command = 0
-idx_server = 0
-idx_gpu = 0
-while idx_command < len(commands):
-    if (idx_server, idx_gpu) not in servergpu2popens:
-        servergpu2popens[(idx_server, idx_gpu)] = []
-    
+    with open(f'{args.dir_run}/commands.txt', 'w') as f:
+        f.write('\n'.join(commands))
+
+    metadata = dict(commands=commands, idx_command=0, command2hostname=dict())
+    with open(f'{args.dir_run}/metadata.json', 'w') as f:
+        json.dump(metadata, f)
+
+
+    with open(f'{dir_script}/servers.txt', 'r') as f:
+        servers = f.readlines()
+        servers = [line.strip() for line in servers]
+
+    print(f'Found {len(servers)} servers, First 3: ')
+    for server in servers[:3]:
+        print(server)
+    print('...')
     print()
-    print('---------------------')
-    print(f'Polling server {servers[idx_server]} GPU {idx_gpu}...')
-    gpu_stats = get_gpu_stats_server(servers[idx_server])
-    n_gpus = len(gpu_stats['total'])
-    n_commands_this_gpu = gpu_stats['free'][idx_gpu]//args.mem_gpu
-    print(f"{gpu_stats['free'][idx_gpu]} MB free, {args.mem_gpu} MB needed/command -> {n_commands_this_gpu} commands")
 
-    done_running = np.all([popen.poll() is not None for popen in servergpu2popens[(idx_server, idx_gpu)]])
-    if done_running:
-        for _ in range(n_commands_this_gpu):
-            launch_command(idx_command=idx_command, idx_server=idx_server, idx_gpu=idx_gpu)
-            idx_command += 1
-            if idx_command >= len(commands):
-                break
-    else:
-        print('Skipping this GPU because it is still running previous commands...')
 
-    idx_gpu += 1
-    if idx_gpu>=n_gpus:
-        idx_gpu = 0
-        idx_server = (idx_server+1)%len(servers)
 
-print('Done launching all commands!')
-print('Waiting for all jobs to finish...')
-for popens in servergpu2popens.values():
-    for popen in popens:
-        popen.wait()
+    # for server in servers:
+    #     print(server)
+    #     print(get_mem_server(server)['free'])
+
+    servergpu2popens = dict()
+
+    def launch_command(idx_command, idx_server, idx_gpu):
+        command = commands[idx_command]
+
+        server_sh = []
+        server_sh.append(f'cd {args.dir}')
+        server_sh.append(f'alias python={path_python}')
+        server_sh.append(f'export CUDA_VISIBLE_DEVICES={idx_gpu}')
+        server_sh.append(command)
+        server_sh = '\n'.join(server_sh)
+
+        f_run = f'{args.dir_run}/{idx_command}/run.sh'
+        f_stdout = f'{args.dir_run}/{idx_command}/stdout.txt'
+        f_stderr = f'{args.dir_run}/{idx_command}/stderr.txt'
+        os.makedirs(os.path.dirname(f_stdout), exist_ok=True)
+        with open(f_run, 'w') as f:
+            f.write(server_sh)
+
+        ssh_command = f'ssh {servers[idx_server]} \"zsh {args.dir_run}/{idx_command}/run.sh\"'
+        print()
+        print(f'{f_run}: ')
+        print(server_sh)
+        print()
+        print(f'Launching command {idx_command} on {servers[idx_server]} GPU {idx_gpu} with:')
+        print(ssh_command)
+
+        # command = f'cd {args.dir} && alias python={path_python} && {command}'
+        # command = f'export CUDA_VISIBLE_DEVICES={idx_gpu} && {command}'
+        # if idx_server is not None:
+            # command = f'ssh {servers[idx_server]} \"{command}\"'
+
+        # print(command)
+        with open(f_stdout, 'wb') as out, open(f_stderr, 'wb') as err:
+            popen = subprocess.Popen(ssh_command, shell=True, stdout=out, stderr=err, executable='zsh')
+            servergpu2popens[(idx_server, idx_gpu)].append(popen)
+
+    idx_command = 0
+    idx_server = 0
+    idx_gpu = 0
+    while idx_command < len(commands):
+        if (idx_server, idx_gpu) not in servergpu2popens:
+            servergpu2popens[(idx_server, idx_gpu)] = []
+        
+        print()
+        print('---------------------')
+        print(f'Polling server {servers[idx_server]} GPU {idx_gpu}...')
+        gpu_stats = get_gpu_stats_server(servers[idx_server])
+        n_gpus = len(gpu_stats['total'])
+        n_commands_this_gpu = gpu_stats['free'][idx_gpu]//args.mem_gpu
+        print(f"{gpu_stats['free'][idx_gpu]} MB free, {args.mem_gpu} MB needed/command -> {n_commands_this_gpu} commands")
+
+        done_running = np.all([popen.poll() is not None for popen in servergpu2popens[(idx_server, idx_gpu)]])
+        if done_running:
+            for _ in range(n_commands_this_gpu):
+                launch_command(idx_command=idx_command, idx_server=idx_server, idx_gpu=idx_gpu)
+                idx_command += 1
+                if idx_command >= len(commands):
+                    break
+        else:
+            print('Skipping this GPU because it is still running previous commands...')
+
+        idx_gpu += 1
+        if idx_gpu>=n_gpus:
+            idx_gpu = 0
+            idx_server = (idx_server+1)%len(servers)
+
+    print('Done launching all commands!')
+    print('Waiting for all jobs to finish...')
+    for popens in servergpu2popens.values():
+        for popen in popens:
+            popen.wait()
+
+if __name__=='__main__':
+    args = parser.parse_args()
+    main(args)
