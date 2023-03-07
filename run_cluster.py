@@ -1,17 +1,13 @@
 
-# Akarsh
 import argparse
 import json
 import os
 import re
 import subprocess
 import sys
-import time
 from datetime import datetime
 
 import numpy as np
-
-# from subprocess import run
 
 parser = argparse.ArgumentParser()
 parser.add_argument('filename', type=str, help='filename to run')

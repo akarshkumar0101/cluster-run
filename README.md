@@ -1,2 +1,2 @@
 # cluster-run
-Scripts for launching many jobs on many remote servers.
+Akarsh's scripts for launching many jobs on many remote servers.
