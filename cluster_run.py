@@ -17,8 +17,8 @@ parser.add_argument('--dir', type=str, default=None, help='location to run comma
 parser.add_argument('--servers', nargs='*', type=str, default=None,
                     help='either a list of servers or a file containing a list of servers')
 
-parser.add_argument('--mem_gpu', type=int, default=5000, help='gpu memory needed for each job (in MB)')
-# parser.add_argument('--mem_cpu', type=int, default=5000, help='cpu memory needed for each job (in MB)')
+parser.add_argument('--mem-gpu', type=int, default=5000, help='gpu memory needed for each job (in MB)')
+# parser.add_argument('--mem-cpu', type=int, default=5000, help='cpu memory needed for each job (in MB)')
 
 def fetch_gpu_stats_server(server, timeout=10):
     # keys = ['total', 'reserved', 'used', 'free']
@@ -127,7 +127,7 @@ def main(args):
                 print('Server GPU still running previous commands, skipping...')
                 continue
             
-            print(f"Server GPU stats: {' '.join([f'{k}: {v:06d} MB' for k, v in gpu_stats])}")
+            print(f"Server GPU stats: {' '.join([f'{k}: {v[i_gpu]:06d} MB' for k, v in gpu_stats.items()])}")
             print(f"Required memory/command: {args.mem_gpu} MB")
             n_commands_this_gpu = gpu_stats['free'][i_gpu]//args.mem_gpu
             print(f"{gpu_stats['free'][i_gpu]}/{args.mem_gpu} -> {n_commands_this_gpu} commands.")
