@@ -1,64 +1,46 @@
-# visiongpu0.csail.mit.edu
-# visiongpu1.csail.mit.edu
-# visiongpu2.csail.mit.edu
-# visiongpu3.csail.mit.edu
-# visiongpu4.csail.mit.edu
-# visiongpu5.csail.mit.edu
-# visiongpu6.csail.mit.edu
-# visiongpu7.csail.mit.edu
-# visiongpu8.csail.mit.edu
-# visiongpu9.csail.mit.edu
-visiongpu10.csail.mit.edu
-visiongpu11.csail.mit.edu
-visiongpu12.csail.mit.edu
-visiongpu13.csail.mit.edu
-visiongpu14.csail.mit.edu
-visiongpu15.csail.mit.edu
-visiongpu16.csail.mit.edu
-visiongpu17.csail.mit.edu
-visiongpu18.csail.mit.edu
-visiongpu19.csail.mit.edu
-visiongpu20.csail.mit.edu
-visiongpu21.csail.mit.edu
-visiongpu22.csail.mit.edu
-visiongpu23.csail.mit.edu
-visiongpu24.csail.mit.edu
-visiongpu25.csail.mit.edu
-visiongpu26.csail.mit.edu
-visiongpu27.csail.mit.edu
-visiongpu28.csail.mit.edu
-visiongpu29.csail.mit.edu
-visiongpu30.csail.mit.edu
-visiongpu31.csail.mit.edu
-visiongpu32.csail.mit.edu
-visiongpu33.csail.mit.edu
-visiongpu34.csail.mit.edu
-visiongpu35.csail.mit.edu
-visiongpu36.csail.mit.edu
-visiongpu37.csail.mit.edu
-visiongpu38.csail.mit.edu
-visiongpu39.csail.mit.edu
-visiongpu40.csail.mit.edu
-visiongpu41.csail.mit.edu
-visiongpu42.csail.mit.edu
-visiongpu43.csail.mit.edu
-visiongpu44.csail.mit.edu
-visiongpu45.csail.mit.edu
-visiongpu46.csail.mit.edu
-visiongpu47.csail.mit.edu
-visiongpu48.csail.mit.edu
-visiongpu49.csail.mit.edu
-visiongpu50.csail.mit.edu
-visiongpu51.csail.mit.edu
-visiongpu52.csail.mit.edu
-visiongpu53.csail.mit.edu
-visiongpu54.csail.mit.edu
-visiongpu55.csail.mit.edu
-visiongpu56.csail.mit.edu
-visiongpu57.csail.mit.edu
-visiongpu58.csail.mit.edu
-visiongpu59.csail.mit.edu
-visiongpu60.csail.mit.edu
-visiongpu61.csail.mit.edu
-visiongpuws01.csail.mit.edu
-visiongpuws02.csail.mit.edu
+freeman-titanxp-1
+freeman-titanxp-2
+freeman-titanxp-3
+freeman-titanxp-4
+freeman-titanxp-5
+freeman-titanxp-6
+freeman-titanxp-7
+freeman-titanxp-8
+freeman-titanxp-9
+oliva-titanxp-1
+oliva-titanxp-2
+torralba-titanxp-1
+torralba-titanxp-2
+torralba-titanxp-3
+torralba-titanxp-4
+torralba-titanxp-5
+torralba-titanxp-6
+torralba-titanxp-7
+oliva-titanv-1
+torralba-titanv-1
+agrawal-2080ti-1
+isola-2080ti-1
+isola-2080ti-2
+isola-2080ti-3
+isola-2080ti-4
+freeman-titanrtx-1
+freeman-titanrtx-2
+isola-titanrtx-1
+oliva-titanrtx-1
+oliva-titanrtx-2
+oliva-titanrtx-3
+torralba-titanrtx-1
+isola-3080-1
+isola-3080-2
+torralba-3090-1
+torralba-3090-2
+torralba-3090-3
+torralba-3090-4
+isola-ada6000-1
+agrawal-v100-1
+freeman-v100-1
+freeman-v100-2
+isola-v100-1
+isola-v100-2
+torralba-v100-1
+torralba-v100-2

@@ -66,9 +66,10 @@ def main(args):
     print(f"Found {len(commands):05d} commands: ")
     print("\n".join(commands))
 
-    servers = args.servers
     if len(args.servers) == 1 and os.path.isfile(args.servers[0]):
         servers = read_clean(args.servers[0])
+    else:
+        servers = [f'{serv}.csail.mit.edu' for serv in args.servers]
     print("----------------------")
     print(f"Found {len(servers):05d} servers: ")
     print(" ".join(servers))
@@ -79,6 +80,7 @@ def main(args):
         server_sh = []
         server_sh.append("#!/bin/zsh")
         server_sh.append(f"source ~/.zshrc")
+        server_sh.append(f"source ~/activiate_conda.sh")
         server_sh.append(f"conda activate {args.conda_env}")
         server_sh.append(f"cd {args.dir}")
         # server_sh.append(f"alias python={args.path_python}")
