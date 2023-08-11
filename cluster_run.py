@@ -80,7 +80,7 @@ def main(args):
         server_sh = []
         server_sh.append("#!/bin/zsh")
         server_sh.append(f"source ~/.zshrc")
-        server_sh.append(f"source ~/activiate_conda.sh")
+        server_sh.append(f"source ~/activate_conda.sh")
         server_sh.append(f"conda activate {args.conda_env}")
         server_sh.append(f"cd {args.dir}")
         # server_sh.append(f"alias python={args.path_python}")
