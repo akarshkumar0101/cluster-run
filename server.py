@@ -79,8 +79,8 @@ def create_experiment(args):
                 metadata["jobs"][i_job]["pid"] = None
                 metadata["jobs"][i_job]["pid_status"] = None
                 metadata["jobs"][i_job]["gpu"] = None
-                with open(f"{args.experiment_dir}/metadata.json", "w") as f:
-                    json.dump(metadata, f, indent=4)
+            with open(f"{args.experiment_dir}/metadata.json", "w") as f:
+                json.dump(metadata, f, indent=4)
         else:
             print(f"Found existing experiment directory at {args.experiment_dir}")
 
