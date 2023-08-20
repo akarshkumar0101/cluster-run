@@ -14,6 +14,7 @@ import pandas as pd
 import psutil
 import torch
 from tabulate import tabulate
+from tqdm.auto import tqdm
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--command_file", type=str, default=None, help="filename to run")
@@ -66,7 +67,7 @@ def create_experiment(args):
             metadata["args"] = vars(args)
             metadata["jobs"] = [{} for _ in range(len(commands))]
 
-            for i_job, command in enumerate(commands):
+            for i_job, command in tqdm(enumerate(commands)):
                 job_dir = f"{args.experiment_dir}/{i_job:010d}"
                 os.makedirs(job_dir, exist_ok=True)
                 metadata["jobs"][i_job] = {}
