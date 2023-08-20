@@ -20,10 +20,10 @@ parser.add_argument("--command_file", type=str, default=None, help="filename to 
 parser.add_argument("--run_dir", type=str, default=None, help="location to run commands")
 parser.add_argument("--experiment_dir", type=str, default=None)
 
-parser.add_argument("--job_gpu_mem", type=int, default=0, help="gpu memory needed for each job (in MB)")
 parser.add_argument("--job_cpu_mem", type=int, default=0, help="cpu memory needed for each job (in MB)")
-parser.add_argument("--max_jobs_gpu", type=int, default=10, help="max number of jobs per gpu")
+parser.add_argument("--job_gpu_mem", type=int, default=None, help="gpu memory needed for each job (in MB)")
 parser.add_argument("--max_jobs_cpu", type=int, default=2, help="max number of jobs per cpu")
+parser.add_argument("--max_jobs_gpu", type=int, default=10, help="max number of jobs per gpu")
 
 parser.add_argument("--conda_env", type=str, default=None, help="the conda environment to use")
 
@@ -133,10 +133,12 @@ class Server:
         mem_cpu = psutil.virtual_memory().available // 1000000
         mem_gpus = [torch.cuda.get_device_properties(i).total_memory // 1000000 for i in range(n_gpus)]
 
-        assert n_gpus > 0 or (n_gpus == 0 and self.args.job_gpu_mem == 0), "No GPUs found, and jobs require GPU memory."
-        if n_gpus == 0:
+        if self.args.job_gpu_mem is not None:
+            assert n_gpus > 0, "No GPUs found, and jobs require GPU memory."
+        else:
             n_gpus = 1
             mem_gpus = [1000]
+            self.args.job_gpu_mem = 0
             self.args.max_jobs_gpu = 10000
 
         self.args.mem_cpu = mem_cpu
