@@ -69,7 +69,7 @@ def main(args):
     if len(args.servers) == 1 and os.path.isfile(args.servers[0]):
         servers = read_clean(args.servers[0])
     else:
-        servers = [f'{serv}.csail.mit.edu' for serv in args.servers]
+        servers = [f"{serv}.csail.mit.edu" for serv in args.servers]
     print("----------------------")
     print(f"Found {len(servers):05d} servers: ")
     print(" ".join(servers))
