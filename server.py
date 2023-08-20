@@ -67,7 +67,7 @@ def create_experiment(args):
             metadata["args"] = vars(args)
             metadata["jobs"] = [{} for _ in range(len(commands))]
 
-            for i_job, command in tqdm(enumerate(commands)):
+            for i_job, command in enumerate(tqdm(commands)):
                 job_dir = f"{args.experiment_dir}/{i_job:010d}"
                 os.makedirs(job_dir, exist_ok=True)
                 metadata["jobs"][i_job] = {}
