@@ -164,7 +164,7 @@ class Server:
             f.write("# !/bin/zsh\n")
             f.write(f"echo $HOME\n")
             f.write(f"source ~/.zshrc\n")
-            # f.write(f"source ~/activate_conda.sh\n")
+            f.write(f"source ~/activate_conda.sh\n")
             f.write(f"conda activate {self.args.conda_env}\n")
             f.write(f"cd {self.args.run_dir}\n")
             f.write(f"export CUDA_VISIBLE_DEVICES={self.metadata['jobs'][i_job]['gpu']}\n")
@@ -209,6 +209,7 @@ class Server:
 
     def run_server(self):
         quitted = False
+        start_time = datetime.now()
         while True:
             self.i_iter += 1
             try:
@@ -240,7 +241,8 @@ class Server:
 
                     print(f"Running server!")
                     print(f"Node: {self.this_node}")
-                    print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+                    print(f"  Start Time: {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
+                    print(f"Current Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
                     print(f"Iteration {self.i_iter: 10d}")
                     print("Args:")
                     print("-" * 80)
