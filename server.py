@@ -25,6 +25,7 @@ parser.add_argument("--job_cpu_mem", type=int, default=0, help="cpu memory neede
 parser.add_argument("--job_gpu_mem", type=int, default=None, help="gpu memory needed for each job (in MB)")
 parser.add_argument("--max_jobs_cpu", type=int, default=2, help="max number of jobs per cpu")
 parser.add_argument("--max_jobs_gpu", type=int, default=10, help="max number of jobs per gpu")
+parser.add_argument("--max_jobs_node", type=int, default=100, help="max number of jobs per computer node")
 
 parser.add_argument("--conda_env", type=str, default=None, help="the conda environment to use")
 
@@ -151,6 +152,7 @@ class Server:
         n_procs_avail_cpu = min(mem_cpu // self.args.job_cpu_mem if self.args.job_cpu_mem > 0 else np.inf, self.args.max_jobs_cpu * n_cpus)
         # cpu/gpu bound
         n_procs = min(n_procs_avail_cpu, sum(n_procs_avail_per_gpu))
+        n_procs = min(n_procs, self.args.max_jobs_node)
         n_procs_per_gpu = [0 for _ in n_procs_avail_per_gpu]
         for _ in range(n_procs):
             for i_gpu in range(len(n_procs_avail_per_gpu)):
