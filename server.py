@@ -154,10 +154,14 @@ class Server:
         n_procs = min(n_procs_avail_cpu, sum(n_procs_avail_per_gpu))
         n_procs = min(n_procs, self.args.max_jobs_node)
         n_procs_per_gpu = [0 for _ in n_procs_avail_per_gpu]
+        i_gpu_ = 0
         for _ in range(n_procs):
-            for i_gpu in range(len(n_procs_avail_per_gpu)):
+            for i in range(len(n_procs_avail_per_gpu)):
+                i_gpu = i_gpu_ % n_gpus
+                i_gpu_ += 1
                 if n_procs_per_gpu[i_gpu] < n_procs_avail_per_gpu[i_gpu]:
                     n_procs_per_gpu[i_gpu] += 1
+                    break
         self.args.n_procs_per_gpu = n_procs_per_gpu
         return dict(n_procs_per_gpu=n_procs_per_gpu)
 
