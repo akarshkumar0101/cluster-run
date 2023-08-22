@@ -166,6 +166,10 @@ class Server:
         return dict(n_procs_per_gpu=n_procs_per_gpu)
 
     def reserve_one_job(self, i_job, i_gpu):
+        self.metadata["jobs"][i_job]["status"] = 1001
+        self.metadata["jobs"][i_job]["status_str"] = status2str[1001]
+        self.metadata["jobs"][i_job]["node"] = self.this_node
+        self.metadata["jobs"][i_job]["gpu"] = i_gpu
         with open(f"{self.args.experiment_dir}/{i_job:010d}/run.sh", "w") as f:
             f.write("# !/bin/zsh\n")
             f.write(f"echo $HOME\n")
@@ -175,10 +179,6 @@ class Server:
             f.write(f"cd {self.args.run_dir}\n")
             f.write(f"export CUDA_VISIBLE_DEVICES={self.metadata['jobs'][i_job]['gpu']}\n")
             f.write(f"{self.metadata['jobs'][i_job]['command']}\n")
-        self.metadata["jobs"][i_job]["status"] = 1001
-        self.metadata["jobs"][i_job]["status_str"] = status2str[1001]
-        self.metadata["jobs"][i_job]["node"] = self.this_node
-        self.metadata["jobs"][i_job]["gpu"] = i_gpu
 
     def reserve_jobs(self):
         # pending jobs
