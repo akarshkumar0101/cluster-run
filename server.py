@@ -226,8 +226,11 @@ class Server:
             for i_gpu in range(self.args.n_gpus):
                 x = torch.rand(10).to(f"cuda:{i_gpu}")
                 x = x.sum().item()
+            print('found gpus!')
             return True
         except Exception as e:
+            print('nooooo cannot use gpus!')
+            print(e)
             return False
 
     def run_server(self):
