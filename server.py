@@ -165,6 +165,7 @@ class Server:
                     n_procs_per_gpu[i_gpu] += 1
                     break
         self.args.n_procs_per_gpu = n_procs_per_gpu
+        self.n_gpus = n_gpus
         return dict(n_procs_per_gpu=n_procs_per_gpu)
 
     def reserve_one_job(self, i_job, i_gpu):
@@ -223,7 +224,7 @@ class Server:
         Return True or False
         """
         try:
-            for i_gpu in range(self.args.n_gpus):
+            for i_gpu in range(self.n_gpus):
                 x = torch.rand(10).to(f"cuda:{i_gpu}")
                 x = x.sum().item()
             print('found gpus!')
