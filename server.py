@@ -29,6 +29,8 @@ parser.add_argument("--max_jobs_node", type=int, default=100, help="max number o
 
 parser.add_argument("--conda_env", type=str, default=None, help="the conda environment to use")
 
+parser.add_argument("--retry_crash", type=lambda x: x.lower() == "true", default=False, help="retry crashed runs")
+
 status2str = {1000: "pending", 1001: "reserved", 1002: "running", 0: "finished", 1: "crashed", -2: "siginted", -9: "sigkilled", -15: "sigtermed"}
 status2str = defaultdict(lambda: "unknown", status2str)
 
@@ -183,6 +185,8 @@ class Server:
     def reserve_jobs(self):
         # pending jobs
         idxs_jobs_pending = [i_job for i_job, job in enumerate(self.metadata["jobs"]) if job["status"] == 1000]
+        idxs_jobs_crashed = [i_job for i_job, job in enumerate(self.metadata["jobs"]) if job["status"] == 1]
+        idxs_jobs_to_take = idxs_jobs_pending + (idxs_jobs_crashed if self.args.retry_crash else [])
 
         n_procs_running = [0 for _ in self.my_resources["n_procs_per_gpu"]]
         running_popens = [popen for popen in self.popen2i_job.keys() if popen.poll() is None]
@@ -192,7 +196,7 @@ class Server:
         n_procs_avail = [a - b for a, b in zip(self.my_resources["n_procs_per_gpu"], n_procs_running)]
         n_procs_launched = [0 for _ in n_procs_avail]
 
-        idxs_jobs = idxs_jobs_pending[: sum(n_procs_avail)]
+        idxs_jobs = idxs_jobs_to_take[: sum(n_procs_avail)]
 
         i_gpu_abs = 0
         for i_job in idxs_jobs:
@@ -213,20 +217,34 @@ class Server:
             self.metadata["jobs"][i_job]["pid"] = popen.pid
             self.popen2i_job[popen] = i_job
 
+    def test_gpus(self):
+        """
+        Test if GPUs are available and working properly.
+        Return True or False
+        """
+        try:
+            for i_gpu in range(self.args.n_gpus):
+                x = torch.rand(10).to(f"cuda:{i_gpu}")
+                x = x.sum().item()
+            return True
+        except Exception as e:
+            return False
+
     def run_server(self):
         quitted = False
         start_time = datetime.now()
         while True:
             self.i_iter += 1
             try:
-                time.sleep(2)
+                time.sleep(20)
                 print("\x1b[2J\x1b[H", end="")
                 with filelock.FileLock(f"{self.args.experiment_dir}/metadata.json.lock"):
                     with open(f"{self.args.experiment_dir}/metadata.json", "r") as f:
                         self.metadata = json.load(f)
 
-                    idxs_jobs = self.reserve_jobs() if not quitted else []
-                    self.launch_jobs(idxs_jobs)
+                    if self.test_gpus():
+                        idxs_jobs = self.reserve_jobs() if not quitted else []
+                        self.launch_jobs(idxs_jobs)
                     # if len(idxs_jobs) > 0:
                     # print(f"Launching {len(idxs_jobs)} jobs.")
 
@@ -245,35 +263,34 @@ class Server:
                     with open(f"{self.args.experiment_dir}/metadata.json", "w") as f:
                         json.dump(self.metadata, f, indent=4)
 
-                    print(f"Running server!")
-                    print(f"Node: {self.this_node}")
-                    print(f"  Start Time: {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
-                    print(f"Current Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-                    print(f"Iteration {self.i_iter: 10d}")
-                    print("Args:")
-                    print("-" * 80)
-                    for k, v in vars(self.args).items():
-                        print(f"{k:20s}: {v}")
-                    print("-" * 80)
-                    print()
+                print(f"Running server! Node: {self.this_node}")
+                print(f"  Start Time: {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
+                print(f"Current Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+                print(f"Time since start: {datetime.now() - start_time}")
+                # print("Args:")
+                # print("-" * 80)
+                # for k, v in vars(self.args).items():
+                #     print(f"{k:20s}: {v}")
+                # print("-" * 80)
+                # print()
 
-                    # all_nodes = [job["node"] for job in metadata["jobs"] if job["node"] is not None]
-                    # all_nodes = list(set(all_nodes))
-                    # print("All nodes: ", " ".join(all_nodes))
-                    # print(get_status_txt(metadata))
-                    # print(f"This node: {this_node}")
-                    # idxs_jobs = [i_job for i_job, job in enumerate(metadata["jobs"]) if job["node"] == this_node]
-                    # print(get_status_txt(metadata, idxs_jobs))
-                    # print([metadata["jobs"][i_job]["pid_status"] for i_job in idxs_jobs])
-                    print(get_status_txt_new(self.metadata))
-                    # no_jobs_pending = all([job["status"] != 1000 for job in self.metadata["jobs"]])
-                    # my_jobs_done = all([poll != 1002 for poll in popen2poll.values()])
-                    # print(no_jobs_pending, my_jobs_done, [popen.poll() for popen in popen2poll])
-                    # if no_jobs_pending and my_jobs_done:
-                    #     break
-                    should_wait = lambda status: status == 1002 or status == 1001 or (status == 1000 and not quitted)
-                    if not any([should_wait(job["status"]) for job in self.metadata["jobs"]]):
-                        break
+                # all_nodes = [job["node"] for job in metadata["jobs"] if job["node"] is not None]
+                # all_nodes = list(set(all_nodes))
+                # print("All nodes: ", " ".join(all_nodes))
+                # print(get_status_txt(metadata))
+                # print(f"This node: {this_node}")
+                # idxs_jobs = [i_job for i_job, job in enumerate(metadata["jobs"]) if job["node"] == this_node]
+                # print(get_status_txt(metadata, idxs_jobs))
+                # print([metadata["jobs"][i_job]["pid_status"] for i_job in idxs_jobs])
+                print(get_status_txt_new(self.metadata))
+                # no_jobs_pending = all([job["status"] != 1000 for job in self.metadata["jobs"]])
+                # my_jobs_done = all([poll != 1002 for poll in popen2poll.values()])
+                # print(no_jobs_pending, my_jobs_done, [popen.poll() for popen in popen2poll])
+                # if no_jobs_pending and my_jobs_done:
+                #     break
+                should_wait = lambda status: status == 1002 or status == 1001 or (status == 1000 and not quitted)
+                if not any([should_wait(job["status"]) for job in self.metadata["jobs"]]):
+                    break
 
             except KeyboardInterrupt:
                 signal = input("Type signal to send to all jobs (ex. sigint=2, sigkill=9, sigterm=15): ")
