@@ -181,7 +181,9 @@ class Server:
             f.write(f"conda activate {self.args.conda_env}\n")
             f.write(f"cd {self.args.run_dir}\n")
             f.write(f"export CUDA_VISIBLE_DEVICES={self.metadata['jobs'][i_job]['gpu']}\n")
+            f.write(f"touch started\n")
             f.write(f"{self.metadata['jobs'][i_job]['command']}\n")
+            f.write(f"touch done\n")
 
     def reserve_jobs(self):
         # pending jobs
@@ -227,10 +229,10 @@ class Server:
             for i_gpu in range(self.n_gpus):
                 x = torch.rand(10).to(f"cuda:{i_gpu}")
                 x = x.sum().item()
-            print('found gpus!')
+            print("found gpus!")
             return True
         except Exception as e:
-            print('nooooo cannot use gpus!')
+            print("nooooo cannot use gpus!")
             print(e)
             return False
 
@@ -241,12 +243,14 @@ class Server:
             self.i_iter += 1
             try:
                 time.sleep(20)
+                gpus_working = self.test_gpus()
                 print("\x1b[2J\x1b[H", end="")
+                print(f"GPUs working: {gpus_working}")
                 with filelock.FileLock(f"{self.args.experiment_dir}/metadata.json.lock"):
                     with open(f"{self.args.experiment_dir}/metadata.json", "r") as f:
                         self.metadata = json.load(f)
 
-                    if self.test_gpus():
+                    if gpus_working:
                         idxs_jobs = self.reserve_jobs() if not quitted else []
                         self.launch_jobs(idxs_jobs)
                     # if len(idxs_jobs) > 0:
