@@ -217,15 +217,19 @@ class Server:
         return "Success!" in out
 
     def update_metadata_jobs(self):
+        n_jobs_running = 0
         for popen, i_job in self.popen2i_job.items():
             poll = popen.poll()
             poll2status = {None: "running", 0: "finished", 1: "crashed", -2: "siginted", -9: "sigkilled", -15: "sigtermed"}
             job = self.metadata["job_data"][i_job]
             job["status"] = poll2status[poll]
+            if job["status"] == "running":
+                n_jobs_running += 1
             try:
                 job["pid_status"] = psutil.Process(job["pid"]).status()
             except psutil.NoSuchProcess:
                 job["pid_status"] = "NoSuchProcess"
+        return n_jobs_running
 
     def update_metadata_nodes(self, status=None):
         if self.this_node not in self.metadata["node_data"]:
@@ -245,20 +249,20 @@ class Server:
                     with open(f"{self.args.experiment_dir}/metadata.json", "r") as f:
                         self.metadata = json.load(f)
 
-                    self.update_metadata_jobs()
+                    n_jobs_running = self.update_metadata_jobs()
                     self.update_metadata_nodes(status=self.test_gpus_result)
 
                     if self.test_gpus_result:
                         idxs_jobs_reserved, idxs_jobs_left = self.reserve_jobs()
                         self.launch_jobs(idxs_jobs_reserved)
 
-                    self.update_metadata_jobs()
+                    n_jobs_running = self.update_metadata_jobs()
                     self.update_metadata_nodes(status=self.test_gpus_result)
 
                     with open(f"{self.args.experiment_dir}/metadata.json", "w") as f:
                         json.dump(self.metadata, f, indent=4)
 
-                    if len(idxs_jobs_left) == 0:
+                    if n_jobs_running == 0 and (len(idxs_jobs_left) == 0 or not self.test_gpus_result):
                         print("All jobs finished!")
                         break
 
@@ -266,7 +270,7 @@ class Server:
                 with filelock.FileLock(f"{self.args.experiment_dir}/metadata.json.lock"):
                     with open(f"{self.args.experiment_dir}/metadata.json", "r") as f:
                         self.metadata = json.load(f)
-                    self.update_metadata_jobs()
+                    n_jobs_running = self.update_metadata_jobs()
                     self.update_metadata_nodes(status="quit")
                     with open(f"{self.args.experiment_dir}/metadata.json", "w") as f:
                         json.dump(self.metadata, f, indent=4)
