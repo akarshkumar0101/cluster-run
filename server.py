@@ -21,18 +21,19 @@ parser.add_argument("--command_file", type=str, default=None, help="filename to 
 parser.add_argument("--run_dir", type=str, default=None, help="location to run commands")
 parser.add_argument("--experiment_dir", type=str, default=None)
 
+parser.add_argument("--monitor", type=lambda x: x.lower() == "true", default=False)
+
 parser.add_argument("--job_cpu_mem", type=int, default=0, help="cpu memory needed for each job (in MB)")
 parser.add_argument("--job_gpu_mem", type=int, default=None, help="gpu memory needed for each job (in MB)")
 parser.add_argument("--max_jobs_cpu", type=int, default=2, help="max number of jobs per cpu")
 parser.add_argument("--max_jobs_gpu", type=int, default=10, help="max number of jobs per gpu")
 parser.add_argument("--max_jobs_node", type=int, default=100, help="max number of jobs per computer node")
-
 parser.add_argument("--conda_env", type=str, default=None, help="the conda environment to use")
-
 parser.add_argument("--retry_crash", type=lambda x: x.lower() == "true", default=False, help="retry crashed runs")
 
-status2str = {1000: "pending", 1001: "reserved", 1002: "running", 0: "finished", 1: "crashed", -2: "siginted", -9: "sigkilled", -15: "sigtermed"}
-status2str = defaultdict(lambda: "unknown", status2str)
+
+# status2str = {1000: "pending", 1001: "reserved", 1002: "running", 0: "finished", 1: "crashed", -2: "siginted", -9: "sigkilled", -15: "sigtermed"}
+# status2str = defaultdict(lambda: "unknown", status2str)
 
 
 def parse_args(*args, **kwargs):
@@ -40,7 +41,6 @@ def parse_args(*args, **kwargs):
     args.command_file = os.path.abspath(os.path.expanduser(args.command_file))
     args.run_dir = os.path.abspath(os.path.expanduser(args.run_dir))
     args.experiment_dir = os.path.abspath(os.path.expanduser(args.experiment_dir))
-
     args.cwd = os.getcwd()
     args.executable = sys.executable
     return args
@@ -57,7 +57,6 @@ def read_clean(file):
 
 def create_experiment(args):
     os.makedirs(args.experiment_dir, exist_ok=True)
-
     with filelock.FileLock(f"{args.experiment_dir}/metadata.json.lock"):
         if not os.path.exists(f"{args.experiment_dir}/metadata.json"):
             print(f"Creating new experiment directory at {args.experiment_dir}")
@@ -68,57 +67,50 @@ def create_experiment(args):
 
             metadata = {}
             metadata["args"] = vars(args)
-            metadata["jobs"] = [{} for _ in range(len(commands))]
+            metadata["job_data"] = {i_job: {} for i_job in range(len(commands))}
+            metadata["node_data"] = {}
 
             for i_job, command in enumerate(tqdm(commands)):
                 job_dir = f"{args.experiment_dir}/{i_job:010d}"
                 os.makedirs(job_dir, exist_ok=True)
-                metadata["jobs"][i_job] = {}
-                metadata["jobs"][i_job]["command"] = command
-                metadata["jobs"][i_job]["job_dir"] = job_dir
-                metadata["jobs"][i_job]["status"] = 1000
-                metadata["jobs"][i_job]["status_str"] = status2str[1000]
-                metadata["jobs"][i_job]["node"] = None
-                metadata["jobs"][i_job]["pid"] = None
-                metadata["jobs"][i_job]["pid_status"] = None
-                metadata["jobs"][i_job]["gpu"] = None
+                metadata["job_data"][i_job] = {}
+                metadata["job_data"][i_job]["command"] = command
+                metadata["job_data"][i_job]["job_dir"] = job_dir
+                metadata["job_data"][i_job]["status"] = "pending"
+                metadata["job_data"][i_job]["node"] = "n/a"
+                metadata["job_data"][i_job]["gpu"] = None
+                metadata["job_data"][i_job]["pid"] = None
+                metadata["job_data"][i_job]["pid_status"] = None
             with open(f"{args.experiment_dir}/metadata.json", "w") as f:
                 json.dump(metadata, f, indent=4)
         else:
             print(f"Found existing experiment directory at {args.experiment_dir}")
 
 
-# def get_status_txt(metadata, idxs_jobs=None):
-#     if idxs_jobs is None:
-#         idxs_jobs = list(range(len(metadata["jobs"])))
-#     status_txt = []
-#     status_txt.append("-" * 80)
-#     status_str2count = Counter([job["status_str"] for job in metadata["jobs"]])
-#     for status_str in list(status2str.values()) + ["unknown"]:
-#         count = status_str2count[status_str]
-#         status_txt.append(f"{status_str:>10s}: {count:> 10d}       ({count/len(idxs_jobs)*100 if len(idxs_jobs)>0 else 0:5.1f}%)")
-#     status_txt.append(". " * 40)
-#     status_txt.append(f"{'total':>10s}: {len(idxs_jobs):10d}       ({100 if len(idxs_jobs)>0 else 0:5.1f}%)")
-#     status_txt.append("-" * 80)
-#     status_txt.append("")
-#     return "\n".join(status_txt)
+def print_status_txt(metadata):
+    nodes_unique = {job["node"] for i_job, job in metadata["job_data"].items()}
+    status_unique = {job["status"] for i_job, job in metadata["job_data"].items()}
+    nodes_unique = sorted(list(nodes_unique))
+    status_unique = sorted(list(status_unique))
 
-
-def get_status_txt_new(metadata):
-    status_strs = np.array([job["status_str"] for job in metadata["jobs"]])
-    # status2str = {1000: "pending", 1001: "reserved", 1002: "running", 0: "finished", 1: "crashed", -2: "siginted", -9: "sigkilled", -15: "sigtermed"}
-    status_strs_unique = sorted(list(set(status_strs).union(set(status2str.values())).union({"unknown"})))
-    nodes = np.array(["n/a" if job["node"] is None else job["node"] for job in metadata["jobs"]])
-    nodes_unique = sorted(list(set(nodes).union({"n/a"})))
-
-    d = np.zeros((len(nodes_unique), len(status_strs_unique)), dtype=object)
+    df = np.zeros((len(nodes_unique), len(status_unique)), dtype=object)
     for i_node, node in enumerate(nodes_unique):
-        for i_status, status_str in enumerate(status_strs_unique):
-            a = np.sum((nodes == node) & (status_strs == status_str))
-            a = " " * 5 if a == 0 else f"{a: 5d}"
-            d[i_node, i_status] = a
-    df = pd.DataFrame(d, index=nodes_unique, columns=status_strs_unique)
-    return tabulate(df, headers="keys", tablefmt="simple_grid")
+        for i_status, status in enumerate(status_unique):
+            entry = np.sum([job["node"] == node and job["status"] == status for i_job, job in metadata["job_data"].items()])
+            entry = " " * 5 if entry == 0 else f"{entry: 5d}"
+            df[i_node, i_status] = entry
+
+    def get_node_str(node):
+        if node in metadata["node_data"]:
+            last_update = metadata["node_data"][node]["last_update"]
+            status = metadata["node_data"][node]["status"]
+            return f"{node} ({status=}) ({last_update=})"
+        else:
+            return "?"
+
+    nodes_unique = [get_node_str(node) for node in nodes_unique]
+    df = pd.DataFrame(df, index=nodes_unique, columns=status_unique)
+    print(tabulate(df, headers="keys", tablefmt="simple_grid"))
 
 
 class Server:
@@ -169,10 +161,10 @@ class Server:
         return dict(n_procs_per_gpu=n_procs_per_gpu)
 
     def reserve_one_job(self, i_job, i_gpu):
-        self.metadata["jobs"][i_job]["status"] = 1001
-        self.metadata["jobs"][i_job]["status_str"] = status2str[1001]
-        self.metadata["jobs"][i_job]["node"] = self.this_node
-        self.metadata["jobs"][i_job]["gpu"] = i_gpu
+        job = self.metadata["job_data"][i_job]
+        job["status"] = "reserved"
+        job["node"] = self.this_node
+        job["gpu"] = i_gpu
         with open(f"{self.args.experiment_dir}/{i_job:010d}/run.sh", "w") as f:
             f.write("# !/bin/zsh\n")
             f.write(f"echo $HOME\n")
@@ -180,144 +172,123 @@ class Server:
             f.write(f"source ~/activate_conda.sh\n")
             f.write(f"conda activate {self.args.conda_env}\n")
             f.write(f"cd {self.args.run_dir}\n")
-            f.write(f"export CUDA_VISIBLE_DEVICES={self.metadata['jobs'][i_job]['gpu']}\n")
-            f.write(f"touch started\n")
-            f.write(f"{self.metadata['jobs'][i_job]['command']}\n")
-            f.write(f"touch done\n")
+            f.write(f"export CUDA_VISIBLE_DEVICES={i_gpu}\n")
+            f.write(f"{job['command']}\n")
 
     def reserve_jobs(self):
         # pending jobs
-        idxs_jobs_pending = [i_job for i_job, job in enumerate(self.metadata["jobs"]) if job["status"] == 1000]
-        idxs_jobs_crashed = [i_job for i_job, job in enumerate(self.metadata["jobs"]) if job["status"] == 1]
+        idxs_jobs_pending = [i_job for i_job, job in self.metadata["job_data"].items() if job["status"] == "pending"]
+        idxs_jobs_crashed = [i_job for i_job, job in self.metadata["job_data"].items() if job["status"] == "crashed"]
         idxs_jobs_to_take = idxs_jobs_pending + (idxs_jobs_crashed if self.args.retry_crash else [])
 
         n_procs_running = [0 for _ in self.my_resources["n_procs_per_gpu"]]
         running_popens = [popen for popen in self.popen2i_job.keys() if popen.poll() is None]
         for popen in running_popens:
             i_job = self.popen2i_job[popen]
-            n_procs_running[self.metadata["jobs"][i_job]["gpu"]] += 1
+            n_procs_running[self.metadata["job_data"][i_job]["gpu"]] += 1
         n_procs_avail = [a - b for a, b in zip(self.my_resources["n_procs_per_gpu"], n_procs_running)]
         n_procs_launched = [0 for _ in n_procs_avail]
 
-        idxs_jobs = idxs_jobs_to_take[: sum(n_procs_avail)]
+        idxs_jobs_reserved = idxs_jobs_to_take[: sum(n_procs_avail)]
 
         i_gpu_abs = 0
-        for i_job in idxs_jobs:
+        for i_job in idxs_jobs_reserved:
             for i_gpu_abs in range(i_gpu_abs, i_gpu_abs + len(n_procs_avail)):
                 i_gpu = i_gpu_abs % len(n_procs_avail)
                 if n_procs_launched[i_gpu] < n_procs_avail[i_gpu]:
                     self.reserve_one_job(i_job, i_gpu)
                     n_procs_launched[i_gpu] += 1
                     break
-        return idxs_jobs
+        idxs_jobs_left = [i_job for i_job in idxs_jobs_to_take if i_job not in idxs_jobs_reserved]
+        return idxs_jobs_reserved, idxs_jobs_left
 
     def launch_jobs(self, idxs_jobs):
         for i_job in idxs_jobs:
-            job = self.metadata["jobs"][i_job]
+            job = self.metadata["job_data"][i_job]
             with open(f"{job['job_dir']}/out.txt", "w") as out_file, open(f"{job['job_dir']}/err.txt", "w") as err_file:
                 # start_new_session=True is needed so SIGINT doesn't propagate to child processes
                 popen = subprocess.Popen(f"zsh {job['job_dir']}/run.sh".split(" "), shell=False, start_new_session=True, stdout=out_file, stderr=err_file)
-            self.metadata["jobs"][i_job]["pid"] = popen.pid
+            self.metadata["job_data"][i_job]["pid"] = popen.pid
             self.popen2i_job[popen] = i_job
 
     def test_gpus(self):
-        """
-        Test if GPUs are available and working properly.
-        Return True or False
-        """
-        try:
-            for i_gpu in range(self.n_gpus):
-                x = torch.rand(10).to(f"cuda:{i_gpu}")
-                x = x.sum().item()
-            print("found gpus!")
-            return True
-        except Exception as e:
-            print("nooooo cannot use gpus!")
-            print(e)
-            return False
+        out = subprocess.check_output("python gpu_check.py".split(" "), timeout=60)
+        out = out.decode("utf-8")
+        return "Success!" in out
+
+    def update_metadata_jobs(self):
+        for popen, i_job in self.popen2i_job.items():
+            poll = popen.poll()
+            poll2status = {None: "running", 0: "finished", 1: "crashed", -2: "siginted", -9: "sigkilled", -15: "sigtermed"}
+            job = self.metadata["job_data"][i_job]
+            job["status"] = poll2status[poll]
+            try:
+                job["pid_status"] = psutil.Process(job["pid"]).status()
+            except psutil.NoSuchProcess:
+                job["pid_status"] = "NoSuchProcess"
+
+    def update_metadata_nodes(self, status=None):
+        if self.this_node not in self.metadata["node_data"]:
+            self.metadata["node_data"][self.this_node] = {}
+        self.metadata["node_data"][self.this_node]["status"] = status
+        self.metadata["node_data"][self.this_node]["start_time"] = self.start_time.strftime("%Y-%m-%d %H:%M:%S")
+        self.metadata["node_data"][self.this_node]["last_update"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     def run_server(self):
-        quitted = False
-        start_time = datetime.now()
+        self.start_time = datetime.now()
         while True:
             self.i_iter += 1
             try:
-                time.sleep(20)
-                gpus_working = self.test_gpus()
-                print("\x1b[2J\x1b[H", end="")
-                print(f"GPUs working: {gpus_working}")
+                time.sleep(10)
+                self.test_gpus_result = self.test_gpus()
                 with filelock.FileLock(f"{self.args.experiment_dir}/metadata.json.lock"):
                     with open(f"{self.args.experiment_dir}/metadata.json", "r") as f:
                         self.metadata = json.load(f)
 
-                    if gpus_working:
-                        idxs_jobs = self.reserve_jobs() if not quitted else []
-                        self.launch_jobs(idxs_jobs)
-                    # if len(idxs_jobs) > 0:
-                    # print(f"Launching {len(idxs_jobs)} jobs.")
+                    self.update_metadata_jobs()
+                    self.update_metadata_nodes(status=self.test_gpus_result)
 
-                    popen2poll = {popen: popen.poll() for popen in self.popen2i_job}
-                    popen2poll = {popen: (poll if poll is not None else 1002) for popen, poll in popen2poll.items()}
-                    for popen, poll in popen2poll.items():
-                        i_job = self.popen2i_job[popen]
-                        job = self.metadata["jobs"][i_job]
-                        job["status"] = poll
-                        job["status_str"] = status2str[poll]
-                        try:
-                            job["pid_status"] = psutil.Process(job["pid"]).status()
-                        except psutil.NoSuchProcess:
-                            job["pid_status"] = "NoSuchProcess"
+                    if self.test_gpus_result:
+                        idxs_jobs_reserved, idxs_jobs_left = self.reserve_jobs()
+                        self.launch_jobs(idxs_jobs_reserved)
+
+                    self.update_metadata_jobs()
+                    self.update_metadata_nodes(status=self.test_gpus_result)
 
                     with open(f"{self.args.experiment_dir}/metadata.json", "w") as f:
                         json.dump(self.metadata, f, indent=4)
 
-                print(f"Running server! Node: {self.this_node}")
-                print(f"  Start Time: {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
-                print(f"Current Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-                print(f"Time since start: {datetime.now() - start_time}")
-                # print("Args:")
-                # print("-" * 80)
-                # for k, v in vars(self.args).items():
-                #     print(f"{k:20s}: {v}")
-                # print("-" * 80)
-                # print()
-
-                # all_nodes = [job["node"] for job in metadata["jobs"] if job["node"] is not None]
-                # all_nodes = list(set(all_nodes))
-                # print("All nodes: ", " ".join(all_nodes))
-                # print(get_status_txt(metadata))
-                # print(f"This node: {this_node}")
-                # idxs_jobs = [i_job for i_job, job in enumerate(metadata["jobs"]) if job["node"] == this_node]
-                # print(get_status_txt(metadata, idxs_jobs))
-                # print([metadata["jobs"][i_job]["pid_status"] for i_job in idxs_jobs])
-                print(get_status_txt_new(self.metadata))
-                # no_jobs_pending = all([job["status"] != 1000 for job in self.metadata["jobs"]])
-                # my_jobs_done = all([poll != 1002 for poll in popen2poll.values()])
-                # print(no_jobs_pending, my_jobs_done, [popen.poll() for popen in popen2poll])
-                # if no_jobs_pending and my_jobs_done:
-                #     break
-                should_wait = lambda status: status == 1002 or status == 1001 or (status == 1000 and not quitted)
-                if not any([should_wait(job["status"]) for job in self.metadata["jobs"]]):
-                    break
+                    if len(idxs_jobs_left) == 0:
+                        print("All jobs finished!")
+                        break
 
             except KeyboardInterrupt:
-                signal = input("Type signal to send to all jobs (ex. sigint=2, sigkill=9, sigterm=15): ")
-                if signal.isdigit():
-                    signal = int(signal)
-                    print("Sending signal to all jobs: ", signal)
-                    for popen in self.popen2i_job:
-                        popen.send_signal(signal)
-                    quitted = True
-                else:
-                    print("Did not understand signal. Continuing...")
-
+                with filelock.FileLock(f"{self.args.experiment_dir}/metadata.json.lock"):
+                    with open(f"{self.args.experiment_dir}/metadata.json", "r") as f:
+                        self.metadata = json.load(f)
+                    self.update_metadata_jobs()
+                    self.update_metadata_nodes(status="quit")
+                    with open(f"{self.args.experiment_dir}/metadata.json", "w") as f:
+                        json.dump(self.metadata, f, indent=4)
         print("Done! Exiting Server")
+
+    def run_monitor(self):
+        while True:
+            time.sleep(5)
+            with filelock.FileLock(f"{self.args.experiment_dir}/metadata.json.lock"):
+                with open(f"{self.args.experiment_dir}/metadata.json", "r") as f:
+                    self.metadata = json.load(f)
+            print("\x1b[2J\x1b[H", end="")
+            print_status_txt(self.metadata)
 
 
 def main(args):
     create_experiment(args)
     server = Server(args)
-    server.run_server()
+    if args.monitor:
+        server.run_monitor()
+    else:
+        server.run_server()
 
 
 if __name__ == "__main__":
