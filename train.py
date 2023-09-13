@@ -19,7 +19,7 @@ def main(args):
     if args.device is None:
         args.device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    for i in range(60):
+    for i in range(20):
         print(i)
         time.sleep(1)
     print(f"{args=}")
@@ -27,7 +27,7 @@ def main(args):
     print(f"{os.getenv('CUDA_VISIBLE_DEVICES')=}")
     print(f"{torch.cuda.device_count()=}")
     print(sys.executable)
-    for i in range(60):
+    for i in range(20):
         print(i)
         time.sleep(1)
     if np.random.random() < 0.5:
