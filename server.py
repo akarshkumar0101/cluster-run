@@ -71,7 +71,7 @@ def create_experiment(args):
             metadata["node_data"] = {}
 
             for i_job, command in enumerate(tqdm(commands)):
-                job_dir = f"{args.experiment_dir}/{i_job:010d}"
+                job_dir = f"{args.experiment_dir}/{int(i_job):010d}"
                 os.makedirs(job_dir, exist_ok=True)
                 metadata["job_data"][i_job] = {}
                 metadata["job_data"][i_job]["command"] = command
@@ -120,6 +120,7 @@ class Server:
         self.this_node = os.uname().nodename
 
         self.my_resources = self.get_server_resources()
+        print(self.my_resources)
         self.i_iter = 0
         self.popen2i_job = {}
 
@@ -165,7 +166,7 @@ class Server:
         job["status"] = "reserved"
         job["node"] = self.this_node
         job["gpu"] = i_gpu
-        with open(f"{self.args.experiment_dir}/{i_job:010d}/run.sh", "w") as f:
+        with open(f"{self.args.experiment_dir}/{int(i_job):010d}/run.sh", "w") as f:
             f.write("# !/bin/zsh\n")
             f.write(f"echo $HOME\n")
             f.write(f"source ~/.zshrc\n")
@@ -243,7 +244,8 @@ class Server:
         while True:
             self.i_iter += 1
             try:
-                time.sleep(10)
+                if self.i_iter > 1:
+                    time.sleep(10)
                 self.test_gpus_result = self.test_gpus()
                 with filelock.FileLock(f"{self.args.experiment_dir}/metadata.json.lock"):
                     with open(f"{self.args.experiment_dir}/metadata.json", "r") as f:
@@ -267,6 +269,7 @@ class Server:
                         break
 
             except KeyboardInterrupt:
+                print('Interrupted')
                 with filelock.FileLock(f"{self.args.experiment_dir}/metadata.json.lock"):
                     with open(f"{self.args.experiment_dir}/metadata.json", "r") as f:
                         self.metadata = json.load(f)
@@ -287,6 +290,7 @@ class Server:
 
 
 def main(args):
+    print(args)
     create_experiment(args)
     server = Server(args)
     if args.monitor:
