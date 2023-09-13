@@ -6,6 +6,7 @@ from distutils.util import strtobool
 
 import numpy as np
 import torch
+import sys
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--device", type=str, default=None, help="device to run on")
@@ -25,6 +26,7 @@ def main(args):
     print(f"{os.uname().nodename=}")
     print(f"{os.getenv('CUDA_VISIBLE_DEVICES')=}")
     print(f"{torch.cuda.device_count()=}")
+    print(sys.executable)
     for i in range(60):
         print(i)
         time.sleep(1)
