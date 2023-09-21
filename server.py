@@ -119,8 +119,8 @@ class Server:
         self.metadata = None
         self.this_node = os.uname().nodename
 
-        self.my_resources = self.get_server_resources()
-        print(self.my_resources)
+        self.resources = self.get_server_resources()  # n_procs_per_gpu ex. [3, 3, 3, 3]
+        # self.used_resources = [0 for _ in self.resources]
         self.i_iter = 0
         self.popen2i_job = {}
 
@@ -131,8 +131,10 @@ class Server:
         mem_gpus = [torch.cuda.get_device_properties(i).total_memory // 1000000 for i in range(n_gpus)]
 
         if self.args.job_gpu_mem is not None:
+            self.args.needs_gpus = True
             assert n_gpus > 0, "No GPUs found, and jobs require GPU memory."
         else:
+            self.args.needs_gpus = False
             n_gpus = 1
             mem_gpus = [1000]
             self.args.job_gpu_mem = 0
@@ -159,7 +161,7 @@ class Server:
                     break
         self.args.n_procs_per_gpu = n_procs_per_gpu
         self.n_gpus = n_gpus
-        return dict(n_procs_per_gpu=n_procs_per_gpu)
+        return n_procs_per_gpu
 
     def reserve_one_job(self, i_job, i_gpu):
         job = self.metadata["job_data"][i_job]
@@ -182,12 +184,12 @@ class Server:
         idxs_jobs_crashed = [i_job for i_job, job in self.metadata["job_data"].items() if job["status"] == "crashed"]
         idxs_jobs_to_take = idxs_jobs_pending + (idxs_jobs_crashed if self.args.retry_crash else [])
 
-        n_procs_running = [0 for _ in self.my_resources["n_procs_per_gpu"]]
+        n_procs_running = [0 for _ in self.resources]
         running_popens = [popen for popen in self.popen2i_job.keys() if popen.poll() is None]
         for popen in running_popens:
             i_job = self.popen2i_job[popen]
             n_procs_running[self.metadata["job_data"][i_job]["gpu"]] += 1
-        n_procs_avail = [a - b for a, b in zip(self.my_resources["n_procs_per_gpu"], n_procs_running)]
+        n_procs_avail = [a - b for a, b in zip(self.resources, n_procs_running)]
         n_procs_launched = [0 for _ in n_procs_avail]
 
         idxs_jobs_reserved = idxs_jobs_to_take[: sum(n_procs_avail)]
@@ -211,6 +213,7 @@ class Server:
                 popen = subprocess.Popen(f"zsh {job['job_dir']}/run.sh".split(" "), shell=False, start_new_session=True, stdout=out_file, stderr=err_file)
             self.metadata["job_data"][i_job]["pid"] = popen.pid
             self.popen2i_job[popen] = i_job
+            print(f"Launching job: {i_job}")
 
     def test_gpus(self):
         out = subprocess.check_output("python gpu_check.py".split(" "), timeout=60)
@@ -246,7 +249,7 @@ class Server:
             try:
                 if self.i_iter > 1:
                     time.sleep(10)
-                self.test_gpus_result = self.test_gpus()
+                self.test_gpus_result = self.test_gpus() if self.args.needs_gpus else True
                 with filelock.FileLock(f"{self.args.experiment_dir}/metadata.json.lock"):
                     with open(f"{self.args.experiment_dir}/metadata.json", "r") as f:
                         self.metadata = json.load(f)
@@ -269,14 +272,16 @@ class Server:
                         break
 
             except KeyboardInterrupt:
-                print('Interrupted')
+                print("Interrupted")
                 with filelock.FileLock(f"{self.args.experiment_dir}/metadata.json.lock"):
                     with open(f"{self.args.experiment_dir}/metadata.json", "r") as f:
                         self.metadata = json.load(f)
                     n_jobs_running = self.update_metadata_jobs()
-                    self.update_metadata_nodes(status="quit")
+                    self.update_metadata_nodes(status="interrupted")
                     with open(f"{self.args.experiment_dir}/metadata.json", "w") as f:
                         json.dump(self.metadata, f, indent=4)
+                    # maybe kill all jobs?
+                break
         print("Done! Exiting Server")
 
     def run_monitor(self):
