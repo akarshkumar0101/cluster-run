@@ -1,6 +1,7 @@
 import argparse
 import os
 import sys
+import shutil
 import subprocess
 
 parser = argparse.ArgumentParser()
@@ -32,6 +33,9 @@ def parse_args(*args, **kwargs):
 
 def main(args):
     os.makedirs(args.exp_dir, exist_ok=True)
+    os.makedirs(f"{args.exp_dir}/job_logs", exist_ok=True)
+    os.makedirs(f"{args.exp_dir}/node_logs", exist_ok=True)
+    shutil.copyfile(args.commands_file, f"{args.exp_dir}/commands.sh")
 
     with open(args.commands_file) as f:
         commands = [line for line in f.read().split('\n') if line]
