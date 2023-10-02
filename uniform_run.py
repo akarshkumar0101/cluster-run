@@ -76,15 +76,14 @@ def main(args):
             f.write('\n'.join(lines))
     print('Done writing node scripts.')
 
-    if args.launch:
-        print('Launching nodes...')
-        for node in nodes:
-            ssh_command = f"zsh {args.exp_dir}/{node}.sh"
-            ssh_command = f"nohup {ssh_command} &> {args.exp_dir}/node_logs/{node}.log &"
-            ssh_command = f"ssh {node}.csail.mit.edu \"{ssh_command}\""
-            print(ssh_command)
+    print(f'Commands to launch (actually launching={args.launch}): ')
+    for node in nodes:
+        ssh_command = f"zsh {args.exp_dir}/{node}.sh"
+        ssh_command = f"nohup {ssh_command} &> {args.exp_dir}/node_logs/{node}.log &"
+        ssh_command = f"ssh {node}.csail.mit.edu \"{ssh_command}\""
+        print(ssh_command)
+        if args.launch:
             subprocess.run(ssh_command, shell=True)
-            print('Done!')
 
 
 if __name__ == '__main__':
