@@ -69,11 +69,12 @@ def create_jobs(args):
     for job_id in job_ids:
         with open(f"{args.meta_dir}/job_{job_id:05d}.sh", "w") as f:
             f.write("#!/bin/bash\n")
-            f.write(f"touch {args.meta_dir}/job_{job_id:05d}.start\n")
-            f.write(f"echo $$ > {args.meta_dir}/job_{job_id:05d}.start\n\n")
+            # f.write(f"touch {args.meta_dir}/job_{job_id:05d}.start\n")
+            f.write(f"echo $$ > {args.meta_dir}/job_{job_id:05d}.start\n\n")  # write pid to file
             f.write(header)
             f.write(f"{jobs[job_id]} &> {args.meta_dir}/job_{job_id:05d}.log\n\n")
-            f.write(f"touch {args.meta_dir}/job_{job_id:05d}.finish\n")
+            # f.write(f"touch {args.meta_dir}/job_{job_id:05d}.finish\n")
+            f.write(f"echo $? > {args.meta_dir}/job_{job_id:05d}.finish\n\n")  # write return code to file
 
     print("Done creating jobs.")
 
@@ -130,8 +131,8 @@ def create_execution_plan(args):
         node_id, gpu = gpu_id.split(":")
         with open(f"{args.meta_dir}/gpu_{node_id}:{gpu}.sh", "w") as f:
             f.write("#!/bin/bash\n")
-            f.write(f"touch {args.meta_dir}/gpu_{node_id}:{gpu}.start\n")
-            f.write(f"echo $$ > {args.meta_dir}/gpu_{node_id}:{gpu}.start\n\n")
+            # f.write(f"touch {args.meta_dir}/gpu_{node_id}:{gpu}.start\n")
+            f.write(f"echo $$ > {args.meta_dir}/gpu_{node_id}:{gpu}.start\n\n")  # write pid to file
             f.write(f"export CUDA_VISIBLE_DEVICES={gpu}\n")
             for job_id in gpu_id2job_ids[gpu_id]:
                 f.write(f"bash {args.meta_dir}/job_{job_id:05d}.sh\n")
