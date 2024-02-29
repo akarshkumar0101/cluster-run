@@ -134,7 +134,7 @@ def create_execution_plan(args):
             f.write(f"echo $$ > {args.meta_dir}/gpu_{node_id}:{gpu}.start\n\n")
             f.write(f"export CUDA_VISIBLE_DEVICES={gpu}\n")
             for job_id in gpu_id2job_ids[gpu_id]:
-                f.write(f"bash {args.meta_dir}/{job_id:05d}.sh\n")
+                f.write(f"bash {args.meta_dir}/job_{job_id:05d}.sh\n")
             f.write("\n")
             f.write(f"touch {args.meta_dir}/gpu_{node_id}:{gpu}.finish\n")
 
