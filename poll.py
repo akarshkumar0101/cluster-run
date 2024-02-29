@@ -5,7 +5,7 @@ import os
 
 import numpy as np
 
-from cluster_run import fetch_gpu_stats_server, read_clean
+from old_cluster_run.cluster_run import fetch_gpu_stats_server, read_clean
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--servers', nargs='*', type=str, default=None,
