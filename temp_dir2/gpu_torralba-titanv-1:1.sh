@@ -1,12 +1,13 @@
 #!/bin/bash
-touch /Users/akarshkumar0101/cluster-run/temp_dir2/gpu_torralba-titanv-1:1.start
-echo $$ > /Users/akarshkumar0101/cluster-run/temp_dir2/gpu_torralba-titanv-1:1.start
+BASH_PID=$$
+echo $BASH_PID > /Users/akarshkumar0101/cluster-run/temp_dir2/gpu_torralba-titanv-1:1_bash.pid
 
 export CUDA_VISIBLE_DEVICES=1
-bash /Users/akarshkumar0101/cluster-run/temp_dir2/00010.sh
-bash /Users/akarshkumar0101/cluster-run/temp_dir2/00022.sh
-bash /Users/akarshkumar0101/cluster-run/temp_dir2/00034.sh
-bash /Users/akarshkumar0101/cluster-run/temp_dir2/00046.sh
-bash /Users/akarshkumar0101/cluster-run/temp_dir2/00058.sh
+export XLA_PYTHON_CLIENT_MEM_FRACTION=.95
+bash /Users/akarshkumar0101/cluster-run/temp_dir2/job_00010.sh
+bash /Users/akarshkumar0101/cluster-run/temp_dir2/job_00022.sh
+bash /Users/akarshkumar0101/cluster-run/temp_dir2/job_00034.sh
+bash /Users/akarshkumar0101/cluster-run/temp_dir2/job_00046.sh
+bash /Users/akarshkumar0101/cluster-run/temp_dir2/job_00058.sh
 
 touch /Users/akarshkumar0101/cluster-run/temp_dir2/gpu_torralba-titanv-1:1.finish

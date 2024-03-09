@@ -69,12 +69,15 @@ def create_jobs(args):
     for job_id in job_ids:
         with open(f"{args.meta_dir}/job_{job_id:05d}.sh", "w") as f:
             f.write("#!/bin/bash\n")
-            # f.write(f"touch {args.meta_dir}/job_{job_id:05d}.start\n")
-            f.write(f"echo $$ > {args.meta_dir}/job_{job_id:05d}.start\n\n")  # write pid to file
+            f.write("BASH_PID=$$\n")
+            f.write(f"echo $BASH_PID > {args.meta_dir}/job_{job_id:05d}_bash.pid\n\n")  # write bash pid
             f.write(header)
-            f.write(f"{jobs[job_id]} &> {args.meta_dir}/job_{job_id:05d}.log\n\n")
-            # f.write(f"touch {args.meta_dir}/job_{job_id:05d}.finish\n")
-            f.write(f"echo $? > {args.meta_dir}/job_{job_id:05d}.finish\n\n")  # write return code to file
+            f.write(f"{jobs[job_id]} &> {args.meta_dir}/job_{job_id:05d}.log &\n\n")  # in background
+            f.write("PYTHON_PID=$!\n")
+            f.write(f"echo $PYTHON_PID > {args.meta_dir}/job_{job_id:05d}_python.pid\n")  # write python pid
+            f.write("wait $PYTHON_PID\n")
+            f.write("RETURN_CODE=$?\n")
+            f.write(f"echo $RETURN_CODE > {args.meta_dir}/job_{job_id:05d}.return\n\n")  # write return code
 
     print("Done creating jobs.")
 
@@ -131,10 +134,10 @@ def create_execution_plan(args):
         node_id, gpu = gpu_id.split(":")
         with open(f"{args.meta_dir}/gpu_{node_id}:{gpu}.sh", "w") as f:
             f.write("#!/bin/bash\n")
-            # f.write(f"touch {args.meta_dir}/gpu_{node_id}:{gpu}.start\n")
-            f.write(f"echo $$ > {args.meta_dir}/gpu_{node_id}:{gpu}.start\n\n")  # write pid to file
+            f.write("BASH_PID=$$\n")
+            f.write(f"echo $BASH_PID > {args.meta_dir}/gpu_{node_id}:{gpu}_bash.pid\n\n")  # write pid to file
             f.write(f"export CUDA_VISIBLE_DEVICES={gpu}\n")
-            f.write(f"export XLA_PYTHON_CLIENT_MEM_FRACTION=.90\n")
+            f.write(f"export XLA_PYTHON_CLIENT_MEM_FRACTION=.95\n")
             for job_id in gpu_id2job_ids[gpu_id]:
                 f.write(f"bash {args.meta_dir}/job_{job_id:05d}.sh\n")
             f.write("\n")
@@ -146,6 +149,13 @@ def create_execution_plan(args):
             ssh_command = f"nohup bash {args.meta_dir}/gpu_{node_id}:{gpu}.sh >/dev/null 2>&1 </dev/null &"
             ssh_command = f"ssh {node_id}.csail.mit.edu \"hostname; {ssh_command}\""
             f.write(f"{ssh_command}\n")
+
+    # with open(f"{args.meta_dir}/kill_all.sh", "w") as f:
+    #     for gpu_id in gpu_ids:
+    #         node_id, gpu = gpu_id.split(":")
+    #         ssh_command = f"nohup bash {args.meta_dir}/gpu_{node_id}:{gpu}.sh >/dev/null 2>&1 </dev/null &"
+    #         ssh_command = f"ssh {node_id}.csail.mit.edu \"hostname; {ssh_command}\""
+    #         f.write(f"{ssh_command}\n")
 
     # with open(f"{args.meta_dir}/check_gpu.sh", "w") as f:
     #     for node in nodes:
