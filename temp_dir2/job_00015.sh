@@ -8,6 +8,7 @@ python icl_bc.py --load_dir=None                                                
 
 PYTHON_PID=$!
 echo $PYTHON_PID > /Users/akarshkumar0101/cluster-run/temp_dir2/job_00015_python.pid
+echo $PYTHON_PID >> /Users/akarshkumar0101/cluster-run/temp_dir2/gpu_oliva-titanv-1:2.pids
 wait $PYTHON_PID
 RETURN_CODE=$?
 echo $RETURN_CODE > /Users/akarshkumar0101/cluster-run/temp_dir2/job_00015.return

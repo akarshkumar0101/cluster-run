@@ -5,6 +5,7 @@ from datetime import datetime
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--meta_dir", type=str, default=None, help="location to save metadata")
+parser.add_argument("--force", type=lambda x: x.lower() == "true", default=False)
 
 # job creation
 parser.add_argument("--jobs_file", type=str, default=None, help="file with list of python jobs")
@@ -15,7 +16,7 @@ parser.add_argument("--run_dir", type=str, default=None, help="location to run j
 parser.add_argument("--gpus_file", type=str, default=None, help="file with list of gpus")
 
 # launch
-parser.add_argument("--launch", type=lambda x: x.lower() == "true", default=None)
+parser.add_argument("--launch", type=lambda x: x.lower() == "true", default=False)
 
 
 def parse_args(*args, **kwargs):
@@ -35,14 +36,19 @@ def get_multi_line_input():
     return lines
 
 
-def create_jobs(args):
+def create_experiment(args):
     print("Creating jobs...")
+
+    # --------------------- Creating venv ---------------------
     if args.venv is None:
         args.venv = input("Enter venv: ")
     args.venv = os.path.abspath(os.path.expanduser(args.venv))
+    # --------------------- Creating run_dir ---------------------
     if args.run_dir is None:
         args.run_dir = input("Enter run_dir: ")
     args.run_dir = os.path.abspath(os.path.expanduser(args.run_dir))
+
+    # --------------------- Gathering jobs ---------------------
     if args.jobs_file is None:
         print("Enter the jobs.")
         jobs = get_multi_line_input()
@@ -52,39 +58,12 @@ def create_jobs(args):
             jobs = f.read().split('\n')
     jobs = [job for job in jobs if job]
     job_ids = list(range(len(jobs)))
-
-    print("Config: ")
-    print(vars(args))
-    os.system(f"rm -rf {args.meta_dir}")
-    os.makedirs(args.meta_dir, exist_ok=True)
-    with open(f"{args.meta_dir}/config.json", "w") as f:
-        json.dump(vars(args), f, indent=4)
-
     print(f'Found {len(job_ids)} jobs.')
-
     with open(f"{args.meta_dir}/jobs.txt", "w") as f:
         f.write("\n".join(jobs))
 
-    header = f"source {args.venv}\ncd {args.run_dir}\n"
-    for job_id in job_ids:
-        with open(f"{args.meta_dir}/job_{job_id:05d}.sh", "w") as f:
-            f.write("#!/bin/bash\n")
-            f.write("BASH_PID=$$\n")
-            f.write(f"echo $BASH_PID > {args.meta_dir}/job_{job_id:05d}_bash.pid\n\n")  # write bash pid
-            f.write(header)
-            f.write(f"{jobs[job_id]} &> {args.meta_dir}/job_{job_id:05d}.log &\n\n")  # in background
-            f.write("PYTHON_PID=$!\n")
-            f.write(f"echo $PYTHON_PID > {args.meta_dir}/job_{job_id:05d}_python.pid\n")  # write python pid
-            f.write("wait $PYTHON_PID\n")
-            f.write("RETURN_CODE=$?\n")
-            f.write(f"echo $RETURN_CODE > {args.meta_dir}/job_{job_id:05d}.return\n\n")  # write return code
-
-    print("Done creating jobs.")
-
-
-def create_execution_plan(args):
+    # --------------------- Gathering gpus ---------------------
     print("Creating execution plan...")
-
     if args.gpus_file is None:
         print("Enter the gpus.")
         lines = get_multi_line_input()
@@ -93,7 +72,6 @@ def create_execution_plan(args):
         with open(args.gpus_file) as f:
             lines = f.read().split('\n')
     lines = [line for line in lines if line]
-
     nodes, gpu_ids = [], []
     for line in lines:
         node, gpus_desc = line.split(":")
@@ -109,51 +87,84 @@ def create_execution_plan(args):
             gpu_ids.append(f"{node}:{gpu}")
         nodes.append(node)
     nodes, gpu_ids = sorted(set(nodes)), sorted(set(gpu_ids))
-
     print(f'Found {len(nodes)} nodes: {nodes}')
     print(f'Found {len(gpu_ids)} gpus: {gpu_ids}')
+    with open(f"{args.meta_dir}/nodes.txt", "w") as f:
+        f.write("\n".join(nodes))
+    with open(f"{args.meta_dir}/gpus.txt", "w") as f:
+        f.write("\n".join(gpu_ids))
 
-    with open(f"{args.meta_dir}/jobs.txt", "r") as f:
-        jobs = f.read().split('\n')
-    job_ids = list(range(len(jobs)))
+    print("Config: ")
+    print(vars(args))
+    with open(f"{args.meta_dir}/config.json", "w") as f:
+        json.dump(vars(args), f, indent=4)
 
+    # --------------------- Assigning jobs to gpus ---------------------
     print(f"Creating execution plan for {len(job_ids)} jobs over {len(gpu_ids)} gpus on {len(nodes)} nodes.")
-
     i_job_id, i_gpu_id = 0, 0
-    gpu_id2job_ids = {gpu_id: [] for gpu_id in gpu_ids}
+    job_id2gpu_id = {}
     while i_job_id < len(job_ids):
         gpu_id, job_id = gpu_ids[i_gpu_id], job_ids[i_job_id]
-        gpu_id2job_ids[gpu_id].append(job_id)
+        job_id2gpu_id[job_id] = gpu_id
         i_job_id = i_job_id + 1
         i_gpu_id = (i_gpu_id + 1) % len(gpu_ids)
-
-    with open(f"{args.meta_dir}/assignments.json", "w") as f:
+    gpu_id2job_ids = {gpu_id: [job_id for job_id in job_ids if job_id2gpu_id[job_id] == gpu_id] for gpu_id in gpu_ids}
+    with open(f"{args.meta_dir}/gpu2jobs.json", "w") as f:
         json.dump(gpu_id2job_ids, f, indent=4)
+    with open(f"{args.meta_dir}/job2gpu.json", "w") as f:
+        json.dump(job_id2gpu_id, f, indent=4)
 
-    for gpu_id in gpu_ids:
-        node_id, gpu = gpu_id.split(":")
-        with open(f"{args.meta_dir}/gpu_{node_id}:{gpu}.sh", "w") as f:
+    # --------------------- Creating job_*.sh ---------------------
+    header = f"source {args.venv}\ncd {args.run_dir}\n"
+    for job_id, gpu_id in job_id2gpu_id.items():
+        with open(f"{args.meta_dir}/job_{job_id:05d}.sh", "w") as f:
             f.write("#!/bin/bash\n")
             f.write("BASH_PID=$$\n")
-            f.write(f"echo $BASH_PID > {args.meta_dir}/gpu_{node_id}:{gpu}_bash.pid\n\n")  # write pid to file
-            f.write(f"export CUDA_VISIBLE_DEVICES={gpu}\n")
+            f.write(f"echo $BASH_PID > {args.meta_dir}/job_{job_id:05d}_bash.pid\n\n")  # write bash pid
+            f.write(header)
+            f.write(f"{jobs[job_id]} &> {args.meta_dir}/job_{job_id:05d}.log &\n\n")  # in background
+            f.write("PYTHON_PID=$!\n")
+            f.write(f"echo $PYTHON_PID > {args.meta_dir}/job_{job_id:05d}_python.pid\n")  # write python pid
+            f.write(f"echo $PYTHON_PID >> {args.meta_dir}/gpu_{gpu_id}.pids\n")
+            f.write("wait $PYTHON_PID\n")
+            f.write("RETURN_CODE=$?\n")
+            f.write(f"echo $RETURN_CODE > {args.meta_dir}/job_{job_id:05d}.return\n\n")  # write return code
+    print("Done creating jobs.")
+
+    # --------------------- Creating gpu_*.sh ---------------------
+    for gpu_id in gpu_ids:
+        node_id, cvd = gpu_id.split(":")
+        with open(f"{args.meta_dir}/gpu_{gpu_id}.sh", "w") as f:
+            f.write("#!/bin/bash\n")
+            f.write("BASH_PID=$$\n")
+            f.write(f"echo $BASH_PID > {args.meta_dir}/gpu_{gpu_id}_bash.pid\n")  # write pid to file
+            f.write(f"echo $BASH_PID > {args.meta_dir}/gpu_{gpu_id}.pids\n\n")
+            f.write(f"export CUDA_VISIBLE_DEVICES={cvd}\n")
             f.write(f"export XLA_PYTHON_CLIENT_MEM_FRACTION=.95\n")
             for job_id in gpu_id2job_ids[gpu_id]:
                 f.write(f"bash {args.meta_dir}/job_{job_id:05d}.sh\n")
             f.write("\n")
-            f.write(f"touch {args.meta_dir}/gpu_{node_id}:{gpu}.finish\n")
+            f.write(f"touch {args.meta_dir}/gpu_{gpu_id}.finish\n")
 
+    # --------------------- Creating launch.sh ---------------------
     with open(f"{args.meta_dir}/launch.sh", "w") as f:
         for gpu_id in gpu_ids:
-            node_id, gpu = gpu_id.split(":")
-            ssh_command = f"nohup bash {args.meta_dir}/gpu_{node_id}:{gpu}.sh >/dev/null 2>&1 </dev/null &"
+            node_id, cvd = gpu_id.split(":")
+            ssh_command = f"nohup bash {args.meta_dir}/gpu_{gpu_id}.sh >/dev/null 2>&1 </dev/null &"
             ssh_command = f"ssh {node_id}.csail.mit.edu \"hostname; {ssh_command}\""
             f.write(f"{ssh_command}\n")
 
-    # with open(f"{args.meta_dir}/kill_all.sh", "w") as f:
+    with open(f"{args.meta_dir}/pids.sh", "w") as f:
+        for gpu_id in gpu_ids:
+            node_id, cvd = gpu_id.split(":")
+            ssh_command = f"$@ \\$(cat {args.meta_dir}/gpu_{gpu_id}.pids)"
+            ssh_command = f"ssh {node_id}.csail.mit.edu \"hostname; {ssh_command}\""
+            f.write(f"{ssh_command}\n")
+
+    # with open(f"{args.meta_dir}/kill.sh", "w") as f:
     #     for gpu_id in gpu_ids:
-    #         node_id, gpu = gpu_id.split(":")
-    #         ssh_command = f"nohup bash {args.meta_dir}/gpu_{node_id}:{gpu}.sh >/dev/null 2>&1 </dev/null &"
+    #         node_id, cvd = gpu_id.split(":")
+    #         ssh_command = f"ps $(cat {args.meta_dir}/gpu_{gpu_id}.pids)"
     #         ssh_command = f"ssh {node_id}.csail.mit.edu \"hostname; {ssh_command}\""
     #         f.write(f"{ssh_command}\n")
 
@@ -173,14 +184,17 @@ def launch_plan(args):
 
 def run_dashboard(args):
     print("Running dashboard...")
-    print(args.meta_dir)
-    while True:
-        a = input("Enter command: ")
-        # print(a)
-        # print(os.listdir(args.meta_dir))
-        a = input()
-        print(a)
-        # take in lines as input jobs
+    print("Some useful commands: ")
+    print(f"cd {args.meta_dir}")
+    print("bash pids.sh ps")
+    print("bash pids.sh kill")
+    # while True:
+    #     a = input("Enter command: ")
+    #     # print(a)
+    #     # print(os.listdir(args.meta_dir))
+    #     a = input()
+    #     print(a)
+    #     # take in lines as input jobs
 
 
 def run_all(args):
@@ -193,23 +207,14 @@ def run_all(args):
             args.meta_dir = default_meta_dir
     args.meta_dir = os.path.abspath(os.path.expanduser(args.meta_dir))
 
-    if not os.path.exists(args.meta_dir):
-        create_jobs(args)
+    if args.force or not os.path.exists(args.meta_dir):
+        print("Creating experiment...")
+        os.system(f"rm -rf {args.meta_dir}")
+        os.makedirs(args.meta_dir, exist_ok=True)
+        create_experiment(args)
     else:
-        yn = input(f"Found existing experiment at {args.meta_dir}, use this? (y/n): ")
-        if yn.lower() == "n":
-            create_jobs(args)
+        print(f"Found existing experiment at {args.meta_dir}")
 
-    if not os.path.exists(f"{args.meta_dir}/launch.sh"):
-        create_execution_plan(args)
-    else:
-        yn = input(f"Found existing execution plan at {args.meta_dir}, use this? (y/n): ")
-        if yn.lower() == "n":
-            create_execution_plan(args)
-
-    if args.launch is None:
-        yn = input(f"Launch plan? (y/n): ")
-        args.launch = yn.lower() == "y"
     if args.launch:
         launch_plan(args)
 

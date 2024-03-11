@@ -1,8 +1,9 @@
 {
     "meta_dir": "/Users/akarshkumar0101/cluster-run/temp_dir2",
+    "force": true,
     "jobs_file": "/Users/akarshkumar0101/cluster-run/example_jobs.sh",
     "venv": "/Users/akarshkumar0101/.virtualenvs/synthetic-mdps/bin/activate",
     "run_dir": "/Users/akarshkumar0101/synthetic-mdps/src",
-    "gpus_file": "./example_nodes.txt",
-    "launch": null
+    "gpus_file": "/Users/akarshkumar0101/cluster-run/example_nodes.txt",
+    "launch": false
 }

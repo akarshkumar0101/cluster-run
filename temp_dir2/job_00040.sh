@@ -8,6 +8,7 @@ python icl_bc.py --load_dir="../data/exp_icl//train_bc/name=csmdp;i_d=4;i_s=0;t_
 
 PYTHON_PID=$!
 echo $PYTHON_PID > /Users/akarshkumar0101/cluster-run/temp_dir2/job_00040_python.pid
+echo $PYTHON_PID >> /Users/akarshkumar0101/cluster-run/temp_dir2/gpu_oliva-titanv-1:3.pids
 wait $PYTHON_PID
 RETURN_CODE=$?
 echo $RETURN_CODE > /Users/akarshkumar0101/cluster-run/temp_dir2/job_00040.return

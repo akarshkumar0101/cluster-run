@@ -1,6 +1,7 @@
 #!/bin/bash
 BASH_PID=$$
 echo $BASH_PID > /Users/akarshkumar0101/cluster-run/temp_dir2/gpu_oliva-titanv-1:3_bash.pid
+echo $BASH_PID > /Users/akarshkumar0101/cluster-run/temp_dir2/gpu_oliva-titanv-1:3.pids
 
 export CUDA_VISIBLE_DEVICES=3
 export XLA_PYTHON_CLIENT_MEM_FRACTION=.95
