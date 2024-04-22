@@ -140,7 +140,7 @@ def create_experiment(args):
             f.write(f"echo $BASH_PID > {args.meta_dir}/gpu_{gpu_id}_bash.pid\n")  # write pid to file
             f.write(f"echo $BASH_PID > {args.meta_dir}/gpu_{gpu_id}.pids\n\n")
             f.write(f"export CUDA_VISIBLE_DEVICES={cvd}\n")
-            f.write(f"export XLA_PYTHON_CLIENT_MEM_FRACTION=.95\n")
+            # f.write(f"export XLA_PYTHON_CLIENT_MEM_FRACTION=.95\n")
             for job_id in gpu_id2job_ids[gpu_id]:
                 f.write(f"bash {args.meta_dir}/job_{job_id:05d}.sh\n")
             f.write("\n")
@@ -186,6 +186,7 @@ def run_dashboard(args):
     print("Running dashboard...")
     print("Some useful commands: ")
     print(f"cd {args.meta_dir}")
+    print("bash launch.sh")
     print("bash pids.sh ps")
     print("bash pids.sh kill")
     # while True:
